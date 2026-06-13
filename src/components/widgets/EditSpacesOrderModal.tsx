@@ -39,18 +39,18 @@ export function EditSpacesOrderModal({ isOpen, spaces, onClose, onSave }: EditSp
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <EditSpacesOrderModalForm
             initialSpaces={spaces}
             onClose={onClose}
             onSave={onSave}
             shouldReduceMotion={shouldReduceMotion}
           />
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }
 

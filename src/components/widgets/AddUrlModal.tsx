@@ -44,9 +44,9 @@ export function AddUrlModal({
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <AddUrlModalForm
             key={`${mode}-${initialValue?.url ?? 'empty'}`}
             mode={mode}
@@ -55,9 +55,9 @@ export function AddUrlModal({
             onSave={onSave}
             shouldReduceMotion={shouldReduceMotion}
           />
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }
 
@@ -132,7 +132,6 @@ function AddUrlModalForm({
   }
 
   function handleClose() {
-    resetForm()
     onClose()
   }
 

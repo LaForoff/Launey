@@ -1,20 +1,20 @@
 export const MODAL_EASE = [0.2, 0.8, 0.2, 1] as const
-export const MODAL_DURATION = 0.24
-const MODAL_SURFACE_FILTER = 'blur(32px) saturate(1.15)'
+export const MODAL_EXIT_EASE = [0.4, 0, 1, 1] as const
+export const MODAL_DURATION = 0.3
 
 export function getModalBackdropAnimation(shouldReduceMotion: boolean) {
   if (shouldReduceMotion) {
     return {
-      initial: { opacity: 1 },
+      initial: { opacity: 0 },
       animate: { opacity: 1 },
-      exit: { opacity: 0, transition: { duration: 0.08 } },
+      exit: { opacity: 0, transition: { duration: 0.14 } },
     }
   }
 
   return {
-    initial: { opacity: 1 },
+    initial: { opacity: 0 },
     animate: { opacity: 1 },
-    exit: { opacity: 0, transition: { duration: 0.12, ease: MODAL_EASE } },
+    exit: { opacity: 0, transition: { duration: 0.17, ease: MODAL_EXIT_EASE } },
   }
 }
 
@@ -40,16 +40,22 @@ export function getFolderBackdropAnimation(shouldReduceMotion: boolean) {
 export function getCenteredModalAnimation(shouldReduceMotion: boolean) {
   if (shouldReduceMotion) {
     return {
-      initial: { opacity: 0, backdropFilter: MODAL_SURFACE_FILTER },
-      animate: { opacity: 1, backdropFilter: MODAL_SURFACE_FILTER },
-      exit: { opacity: 0, backdropFilter: MODAL_SURFACE_FILTER },
+      initial: { opacity: 0 },
+      animate: { opacity: 1 },
+      exit: {
+        opacity: 0,
+        transition: { duration: 0.14 },
+      },
     }
   }
 
   return {
-    initial: { opacity: 0, scale: 0.96, backdropFilter: MODAL_SURFACE_FILTER },
-    animate: { opacity: 1, scale: 1, backdropFilter: MODAL_SURFACE_FILTER },
-    exit: { opacity: 0, scale: 0.96, backdropFilter: MODAL_SURFACE_FILTER },
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: {
+      opacity: 0,
+      transition: { duration: 0.18, ease: MODAL_EXIT_EASE },
+    },
   }
 }
 

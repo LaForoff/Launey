@@ -53,9 +53,9 @@ export function FolderModal({
   }, [isOpen, onClose])
 
   return (
-    <AnimatePresence onExitComplete={onExitComplete}>
-      {isOpen && folder ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence onExitComplete={onExitComplete}>
+        {isOpen && folder ? (
           <motion.div
             className="modal-backdrop folder-modal-backdrop"
             role="presentation"
@@ -120,8 +120,8 @@ export function FolderModal({
             </div>
             </motion.section>
           </motion.div>
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }

@@ -19,9 +19,9 @@ export function DeleteUrlModal({ isOpen, onCancel, onConfirm }: DeleteUrlModalPr
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <motion.div
             className="modal-backdrop"
             role="presentation"
@@ -55,8 +55,8 @@ export function DeleteUrlModal({ isOpen, onCancel, onConfirm }: DeleteUrlModalPr
             </div>
             </motion.section>
           </motion.div>
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }

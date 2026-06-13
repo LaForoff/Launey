@@ -25,9 +25,9 @@ export function DeleteFolderModal({
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <motion.div
             className="modal-backdrop"
             role="presentation"
@@ -64,8 +64,8 @@ export function DeleteFolderModal({
             </div>
             </motion.section>
           </motion.div>
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }

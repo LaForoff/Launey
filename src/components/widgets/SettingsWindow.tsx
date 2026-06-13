@@ -8,7 +8,9 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
+  ArrowClockwise,
   ArrowsClockwise,
   CloudSun,
   DownloadSimple,
@@ -26,12 +28,26 @@ import { BUILD_INFO } from '../../config/buildInfo'
 import type { AppearanceTheme, AppSettings, SyncMeta } from '../../lib/settingsApi'
 import { formatDateTime } from '../../lib/formatBuildDate'
 import type { LauneyExportFile } from '../../lib/launeySync'
+import {
+  CURRENT_RELEASE,
+  MOCK_UPDATE_RELEASE,
+  markUpdateCompleted,
+  mockUpdateProvider,
+  type UpdateRelease,
+} from '../../lib/updateService'
 import { searchWeatherCities, type WeatherCitySuggestion } from '../../lib/weatherApi'
 import type { SpaceBackground } from '../../types/space'
 import { ModalPortal } from './ModalPortal'
+import {
+  MODAL_DURATION,
+  MODAL_EASE,
+  getCenteredModalAnimation,
+  getModalBackdropAnimation,
+} from './modalMotion'
+import { UpdateCard, type UpdateCardState } from './UpdateCard'
 import './SettingsWindow.css'
 
-type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about'
+type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about' | 'updates'
 
 interface SettingsSliderProps {
   ariaLabel: string
@@ -65,6 +81,7 @@ const SIDEBAR_ITEMS: Array<{
   { id: 'appearance', label: 'Оформление', icon: (props) => <PaintBrushBroad {...props} weight="fill" /> },
   { id: 'weather', label: 'Погода', icon: (props) => <CloudSun {...props} weight="fill" /> },
   { id: 'about', label: 'О приложении', icon: (props) => <Info {...props} weight="fill" /> },
+  { id: 'updates', label: 'Обновления', icon: (props) => <ArrowClockwise {...props} weight="fill" /> },
 ]
 
 export function SettingsWindow({
@@ -78,27 +95,32 @@ export function SettingsWindow({
   onExport,
   onImport,
 }: SettingsWindowProps) {
-  if (!isOpen) {
-    return null
-  }
+  const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
     <ModalPortal>
-      <SettingsWindowContent
-        draftSettings={draftSettings}
-        onClose={onClose}
-        onDraftSettingsChange={onDraftSettingsChange}
-        onOpenBackgroundPicker={onOpenBackgroundPicker}
-        onNotify={onNotify}
-        onNotifySuccess={onNotifySuccess}
-        onExport={onExport}
-        onImport={onImport}
-      />
+      <AnimatePresence>
+        {isOpen ? (
+          <SettingsWindowContent
+            draftSettings={draftSettings}
+            onClose={onClose}
+            onDraftSettingsChange={onDraftSettingsChange}
+            onOpenBackgroundPicker={onOpenBackgroundPicker}
+            onNotify={onNotify}
+            onNotifySuccess={onNotifySuccess}
+            onExport={onExport}
+            onImport={onImport}
+            shouldReduceMotion={shouldReduceMotion}
+          />
+        ) : null}
+      </AnimatePresence>
     </ModalPortal>
   )
 }
 
-interface SettingsWindowContentProps extends Omit<SettingsWindowProps, 'isOpen'> {}
+interface SettingsWindowContentProps extends Omit<SettingsWindowProps, 'isOpen'> {
+  shouldReduceMotion: boolean
+}
 
 function SettingsWindowContent({
   draftSettings,
@@ -109,20 +131,27 @@ function SettingsWindowContent({
   onNotifySuccess,
   onExport,
   onImport,
+  shouldReduceMotion,
 }: SettingsWindowContentProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>('sync')
   const [isPreviewingWallpaper, setIsPreviewingWallpaper] = useState(false)
+  const [releaseNotesRelease, setReleaseNotesRelease] = useState<UpdateRelease | null>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        if (releaseNotesRelease) {
+          setReleaseNotesRelease(null)
+          return
+        }
+
         onClose()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, releaseNotesRelease])
 
   useEffect(() => {
     if (!isPreviewingWallpaper) {
@@ -151,14 +180,18 @@ function SettingsWindowContent({
   }
 
   return (
-    <div
+    <motion.div
       className={isPreviewingWallpaper ? 'modal-backdrop settings-window-backdrop is-previewing' : 'modal-backdrop settings-window-backdrop'}
       role="presentation"
+      {...getModalBackdropAnimation(shouldReduceMotion)}
+      transition={{ duration: shouldReduceMotion ? 0.18 : 0.32, ease: MODAL_EASE }}
       onPointerDown={handleBackdropPointerDown}
     >
-      <section
+      <motion.section
         className={isPreviewingWallpaper ? 'settings-window is-previewing' : 'settings-window'}
         aria-label="Настройки"
+        {...getCenteredModalAnimation(shouldReduceMotion)}
+        transition={{ duration: shouldReduceMotion ? 0.18 : MODAL_DURATION, ease: MODAL_EASE }}
       >
         <aside className="settings-sidebar">
           <div className="settings-sidebar-title">Настройки</div>
@@ -215,9 +248,21 @@ function SettingsWindowContent({
           ) : null}
 
           {activeSection === 'about' ? <AboutSection /> : null}
+          {activeSection === 'updates' ? (
+            <UpdatesSection onShowReleaseNotes={setReleaseNotesRelease} />
+          ) : null}
         </div>
-      </section>
-    </div>
+      </motion.section>
+      <AnimatePresence>
+        {releaseNotesRelease ? (
+          <ReleaseNotesModal
+            release={releaseNotesRelease}
+            onClose={() => setReleaseNotesRelease(null)}
+            shouldReduceMotion={shouldReduceMotion}
+          />
+        ) : null}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
@@ -230,6 +275,7 @@ interface SyncSectionProps {
 }
 
 function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }: SyncSectionProps) {
+  const shouldReduceMotion = Boolean(useReducedMotion())
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [pendingFile, setPendingFile] = useState<LauneyExportFile | null>(null)
@@ -339,9 +385,19 @@ function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }
           </article>
         </div>
       </div>
-      {pendingFile ? (
-        <div className="modal-backdrop modal-backdrop-strong" role="presentation">
-          <section className="add-url-modal delete-url-modal">
+      <AnimatePresence>
+        {pendingFile ? (
+        <motion.div
+          className="modal-backdrop modal-backdrop-strong"
+          role="presentation"
+          {...getModalBackdropAnimation(shouldReduceMotion)}
+          transition={{ duration: shouldReduceMotion ? 0.18 : 0.32, ease: MODAL_EASE }}
+        >
+          <motion.section
+            className="add-url-modal delete-url-modal"
+            {...getCenteredModalAnimation(shouldReduceMotion)}
+            transition={{ duration: shouldReduceMotion ? 0.18 : MODAL_DURATION, ease: MODAL_EASE }}
+          >
             <div className="modal-header">
               <h2>Импортировать данные?</h2>
             </div>
@@ -356,9 +412,10 @@ function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }
                 Импортировать
               </button>
             </div>
-          </section>
-        </div>
-      ) : null}
+          </motion.section>
+        </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   )
 }
@@ -709,6 +766,197 @@ function AboutSection() {
       </div>
     </div>
   )
+}
+
+interface UpdatesSectionProps {
+  onShowReleaseNotes: (release: UpdateRelease) => void
+}
+
+function UpdatesSection({ onShowReleaseNotes }: UpdatesSectionProps) {
+  const [cardState, setCardState] = useState<UpdateCardState>('idle')
+  const [release, setRelease] = useState<UpdateRelease>(MOCK_UPDATE_RELEASE)
+  const [lastCheckedAt, setLastCheckedAt] = useState('13.06.2026 19:23')
+  const [checkOnOpen, setCheckOnOpen] = useState(true)
+  const [isChecking, setIsChecking] = useState(false)
+
+  useEffect(() => {
+    if (cardState !== 'downloading') {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      setRelease((current) => {
+        const downloadProgress = Math.min(100, current.downloadProgress + 1)
+
+        if (downloadProgress === 100) {
+          window.clearInterval(intervalId)
+        }
+
+        return { ...current, downloadProgress }
+      })
+    }, 40)
+
+    return () => window.clearInterval(intervalId)
+  }, [cardState])
+
+  useEffect(() => {
+    if (cardState !== 'downloading' || release.downloadProgress < 100) {
+      return
+    }
+
+    const reloadTimeoutId = window.setTimeout(() => {
+      markUpdateCompleted(release.version)
+      window.location.reload()
+    }, 700)
+
+    return () => window.clearTimeout(reloadTimeoutId)
+  }, [cardState, release.downloadProgress])
+
+  async function handleCheck() {
+    if (isChecking) {
+      return
+    }
+
+    setIsChecking(true)
+
+    try {
+      const nextRelease = await mockUpdateProvider.checkForUpdates()
+      setRelease(nextRelease)
+      setLastCheckedAt(formatUpdateCheckDate(new Date()))
+      setCardState(nextRelease.isUpdateAvailable ? 'available' : 'idle')
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
+  function handleInstall() {
+    setRelease((current) => ({ ...current, downloadProgress: 0 }))
+    setCardState('downloading')
+  }
+
+  return (
+    <div className="settings-section settings-section-updates">
+      <header className="settings-section-header">
+        <h2>Обновления</h2>
+      </header>
+
+      <div className="settings-info-card">
+        <Info size={14} weight="fill" />
+        <p>
+          Узнавайте о новых версиях, просматривайте список изменений и поддерживайте приложение в
+          актуальном состоянии.
+        </p>
+      </div>
+
+      <div className="settings-updates-stack">
+        <UpdateCard
+          state={cardState}
+          release={release}
+          lastCheckedAt={lastCheckedAt}
+          checkOnOpen={checkOnOpen}
+          isChecking={isChecking}
+          onCheck={() => void handleCheck()}
+          onShowChanges={() => onShowReleaseNotes(release)}
+          onInstall={handleInstall}
+          onToggleCheckOnOpen={() => setCheckOnOpen((current) => !current)}
+        />
+
+        <CurrentVersionCard release={CURRENT_RELEASE} />
+      </div>
+    </div>
+  )
+}
+
+function CurrentVersionCard({ release }: { release: UpdateRelease }) {
+  return (
+    <article className="settings-card settings-current-version-card">
+      <div className="settings-current-version-heading">
+        <img src={logoLauney} alt="" />
+        <div>
+          <span>Текущая версия</span>
+          <strong>Launey {release.version}</strong>
+        </div>
+      </div>
+
+      <div className="settings-release-notes">
+        <h3>Об этом обновлении</h3>
+        <ReleaseNotesList notes={release.releaseNotes} />
+      </div>
+    </article>
+  )
+}
+
+function ReleaseNotesModal({
+  release,
+  onClose,
+  shouldReduceMotion,
+}: {
+  release: UpdateRelease
+  onClose: () => void
+  shouldReduceMotion: boolean
+}) {
+  function handleBackdropPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      onClose()
+    }
+  }
+
+  return (
+    <motion.div
+      className="modal-backdrop modal-backdrop-strong"
+      role="presentation"
+      {...getModalBackdropAnimation(shouldReduceMotion)}
+      transition={{ duration: shouldReduceMotion ? 0.18 : 0.32, ease: MODAL_EASE }}
+      onPointerDown={handleBackdropPointerDown}
+    >
+      <motion.section
+        className="modal-surface settings-release-modal"
+        aria-modal="true"
+        aria-label="О новой версии"
+        {...getCenteredModalAnimation(shouldReduceMotion)}
+        transition={{ duration: shouldReduceMotion ? 0.18 : MODAL_DURATION, ease: MODAL_EASE }}
+      >
+        <header className="settings-release-modal-header">
+          <h2>О новой версии</h2>
+          <button type="button" className="modal-close" aria-label="Закрыть" onClick={onClose}>
+            <X size={18} weight="bold" />
+          </button>
+        </header>
+
+        <div className="settings-release-modal-content">
+          <div className="settings-release-modal-version">
+            <img src={logoLauney} alt="" />
+            <strong>Launey {release.version}</strong>
+          </div>
+
+          <div className="settings-release-notes">
+            <h3>О последнем обновлении</h3>
+            <ReleaseNotesList notes={release.releaseNotes} />
+          </div>
+        </div>
+      </motion.section>
+    </motion.div>
+  )
+}
+
+function ReleaseNotesList({ notes }: { notes: string[] }) {
+  return (
+    <ul className="settings-release-notes-list">
+      {notes.map((note) => (
+        <li key={note}>{note}</li>
+      ))}
+    </ul>
+  )
+}
+
+function formatUpdateCheckDate(date: Date) {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 function getBackgroundLabel(background: SpaceBackground) {

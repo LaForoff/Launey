@@ -40,9 +40,9 @@ export function CreateFolderModal({
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <CreateFolderModalContent
             key={`${mode}-${editingFolderTitle ?? 'new'}`}
             mode={mode}
@@ -53,9 +53,9 @@ export function CreateFolderModal({
             onSubmit={onSubmit}
             shouldReduceMotion={shouldReduceMotion}
           />
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }
 

@@ -129,9 +129,9 @@ export function LauneyLabsModal({
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && iconSrc ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen && iconSrc ? (
           <motion.div
             className="modal-backdrop modal-backdrop-strong"
             role="presentation"
@@ -400,9 +400,9 @@ export function LauneyLabsModal({
             </div>
             </motion.section>
           </motion.div>
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }
 

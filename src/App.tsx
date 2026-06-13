@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Shell } from './components/layout/Shell'
 import { StartupSplash } from './components/splash/StartupSplash'
+import { PostUpdateModal } from './components/widgets/PostUpdateModal'
 import { spaces } from './data/spaces'
 import { loadAppSettingsFromLocalStorage } from './lib/settingsApi'
+import { getCompletedUpdateRelease, type UpdateRelease } from './lib/updateService'
 import './App.css'
 import './styles/global.css'
 
@@ -10,6 +12,9 @@ function App() {
   const [isSplashAnimationDone, setIsSplashAnimationDone] = useState(false)
   const [isAppRevealStarted, setIsAppRevealStarted] = useState(false)
   const [isBackgroundReady, setIsBackgroundReady] = useState(false)
+  const [completedUpdate, setCompletedUpdate] = useState<UpdateRelease | null>(() =>
+    getCompletedUpdateRelease(),
+  )
   const isSplashVisible = useMemo(
     () => !(isSplashAnimationDone && isBackgroundReady),
     [isBackgroundReady, isSplashAnimationDone],
@@ -72,6 +77,9 @@ function App() {
           onRevealStart={() => setIsAppRevealStarted(true)}
           onFinish={() => setIsSplashAnimationDone(true)}
         />
+      ) : null}
+      {!isSplashVisible && completedUpdate ? (
+        <PostUpdateModal release={completedUpdate} onClose={() => setCompletedUpdate(null)} />
       ) : null}
     </>
   )

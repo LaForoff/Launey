@@ -9,7 +9,6 @@
   height: 616px;
   padding: 8px;
   overflow: hidden;
-  transition: opacity 180ms ease;
 }
 
 .settings-window.is-previewing {
@@ -602,6 +601,241 @@
   width: auto;
   height: 16px;
   opacity: 0.88;
+}
+
+.settings-updates-stack {
+  display: grid;
+  grid-template-rows: 126px minmax(0, 1fr);
+  flex: 1;
+  gap: 16px;
+  min-height: 0;
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+.settings-update-card {
+  display: grid;
+  grid-template-rows: 66px 1px 58px;
+  height: 126px;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.settings-update-card-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-update-copy {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.settings-update-copy strong,
+.settings-update-download-meta strong {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.settings-update-copy span,
+.settings-update-download-meta span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.settings-update-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.settings-update-actions .settings-inline-button {
+  min-width: 96px;
+}
+
+.settings-update-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.settings-update-toggle {
+  width: 100%;
+  height: 58px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-weight: 600;
+}
+
+.settings-update-download {
+  display: grid;
+  width: 100%;
+  gap: 9px;
+}
+
+.settings-update-download-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-update-progress {
+  width: 100%;
+  height: 12px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.settings-update-progress-fill {
+  display: block;
+  width: var(--settings-update-progress, 0%);
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(var(--slider-accent-rgb, 150, 165, 190), 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: width 180ms ease;
+}
+
+.settings-current-version-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.settings-current-version-heading,
+.settings-release-modal-version {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.settings-current-version-heading img,
+.settings-release-modal-version img {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.settings-current-version-heading div {
+  display: grid;
+  gap: 5px;
+}
+
+.settings-current-version-heading span {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.settings-current-version-heading strong,
+.settings-release-modal-version strong {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-release-notes {
+  margin-top: 24px;
+}
+
+.settings-release-notes h3 {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.settings-release-notes-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 0 0 17px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.settings-current-version-card .settings-release-notes {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.settings-current-version-card .settings-release-notes-list {
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  padding-right: 8px;
+  font-size: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.settings-release-modal {
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr);
+  width: min(445px, 100%);
+  height: 525px;
+}
+
+.settings-release-modal-header {
+  display: flex;
+  align-items: center;
+  padding: 0 56px 0 24px;
+}
+
+.settings-release-modal-header h2 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-release-modal-content {
+  min-height: 0;
+  padding: 8px 24px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.settings-release-modal-version {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+.settings-release-modal-version img {
+  width: 64px;
+  height: 64px;
+}
+
+.settings-release-modal-version strong {
+  font-size: 17px;
+}
+
+.settings-release-modal .settings-release-notes h3 {
+  margin-bottom: 16px;
+  font-size: 15px;
+}
+
+.settings-release-modal .settings-release-notes-list {
+  padding-left: 16px;
+  font-size: 13px;
 }
 
 @media (max-width: 760px) {

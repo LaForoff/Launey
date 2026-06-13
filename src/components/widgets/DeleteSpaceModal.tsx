@@ -25,9 +25,9 @@ export function DeleteSpaceModal({
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <motion.div
             className="modal-backdrop modal-backdrop-strong"
             role="presentation"
@@ -64,8 +64,8 @@ export function DeleteSpaceModal({
             </div>
             </motion.section>
           </motion.div>
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }

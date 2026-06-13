@@ -70,9 +70,9 @@ export function IconSettingsModal({ isOpen, title, url, initialIcon, onClose, on
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <IconSettingsModalContent
             key={title || 'icon-settings'}
             title={title}
@@ -82,9 +82,9 @@ export function IconSettingsModal({ isOpen, title, url, initialIcon, onClose, on
             onSave={onSave}
             shouldReduceMotion={shouldReduceMotion}
           />
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }
 

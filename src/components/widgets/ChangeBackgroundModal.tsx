@@ -34,9 +34,9 @@ export function ChangeBackgroundModal({
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <ChangeBackgroundModalForm
             key={initialValue?.type === 'default' ? 'default' : initialValue?.value}
             initialValue={initialValue}
@@ -47,9 +47,9 @@ export function ChangeBackgroundModal({
             notifyOnSuccess={notifyOnSuccess}
             showApplyToAllToggle={showApplyToAllToggle}
           />
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }
 

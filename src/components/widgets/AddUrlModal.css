@@ -255,18 +255,18 @@
     opacity 160ms ease;
 }
 
-.modal-button-primary {
+:is(.modal-button, .settings-inline-button).modal-button-primary {
   color: rgba(8, 10, 18, 0.94);
   border-color: rgba(255, 255, 255, 0.72);
   background: rgba(244, 245, 248, 0.92);
 }
 
-.modal-button-primary:active:not(:disabled) {
+:is(.modal-button, .settings-inline-button).modal-button-primary:active:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.86);
   background: rgba(255, 255, 255, 0.96);
 }
 
-.modal-button-primary:disabled {
+:is(.modal-button, .settings-inline-button).modal-button-primary:disabled {
   color: rgba(10, 13, 24, 0.38);
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(238, 240, 246, 0.34);

@@ -21,13 +21,13 @@ export function CreateSpaceModal({ isOpen, onClose, onCreate }: CreateSpaceModal
   const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <ModalPortal>
+    <ModalPortal>
+      <AnimatePresence>
+        {isOpen ? (
           <CreateSpaceModalForm onClose={onClose} onCreate={onCreate} shouldReduceMotion={shouldReduceMotion} />
-        </ModalPortal>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </ModalPortal>
   )
 }
 
