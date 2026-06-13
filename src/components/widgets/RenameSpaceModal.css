@@ -1,0 +1,23 @@
+.rename-space-modal {
+  min-height: 0;
+  height: auto;
+}
+
+.rename-space-content {
+  padding-right: 12px;
+}
+
+.rename-space-input {
+  width: 100%;
+}
+
+.rename-space-actions {
+  margin-top: 28px;
+}
+
+.rename-space-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}

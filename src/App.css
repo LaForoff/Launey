@@ -1,0 +1,29 @@
+.app-shell-stage {
+  opacity: 0;
+  filter: blur(14px);
+  transform: translate3d(0, 10px, 0) scale(0.985);
+  pointer-events: none;
+  transition:
+    opacity 760ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, filter, transform;
+}
+
+.app-shell-stage.is-revealed {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell-stage,
+  .app-shell-stage.is-revealed {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
+    pointer-events: auto;
+  }
+}

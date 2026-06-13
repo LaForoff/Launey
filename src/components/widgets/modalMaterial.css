@@ -1,0 +1,159 @@
+.modal-backdrop {
+  --modal-overlay-background: rgba(0, 0, 0, 0.52);
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  filter: none;
+  pointer-events: auto;
+}
+
+.modal-backdrop::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--modal-overlay-background);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  filter: none;
+  pointer-events: none;
+  content: '';
+}
+
+.modal-backdrop ~ .modal-backdrop::before,
+.modal-backdrop .modal-backdrop::before {
+  opacity: 0;
+  animation: none;
+}
+
+.modal-backdrop-strong {
+  background: transparent;
+}
+
+.modal-surface,
+.add-url-modal,
+.settings-window,
+.folder-modal {
+  --modal-surface-background: rgba(var(--modal-window-rgb, 22, 23, 27), 0.9);
+  --modal-surface-border: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.18);
+  --modal-surface-blur: blur(36px) saturate(0.92);
+  --modal-card-background: rgba(var(--modal-card-rgb, 36, 38, 44), 0.78);
+  --modal-control-background: rgba(var(--modal-control-rgb, 42, 44, 50), 0.64);
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  contain: paint;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--modal-surface-border);
+  border-radius: 28px;
+  background: var(--modal-surface-background);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.015),
+    0 18px 56px rgba(0, 0, 0, 0.34),
+    0 0 28px rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.07);
+  -webkit-backdrop-filter: var(--modal-surface-blur);
+  backdrop-filter: var(--modal-surface-blur);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, opacity, backdrop-filter;
+}
+
+.modal-surface::before,
+.add-url-modal::before,
+.settings-window::before,
+.folder-modal::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0.012) 24%,
+    rgba(255, 255, 255, 0) 58%
+  );
+  pointer-events: none;
+  content: '';
+}
+
+.modal-surface > *,
+.add-url-modal > *,
+.settings-window > *,
+.folder-modal > * {
+  z-index: 1;
+}
+
+.add-url-modal,
+.settings-window {
+  animation: modalSurfaceReveal 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal-close,
+.settings-window-close {
+  appearance: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.14);
+  border-radius: 50%;
+  background: var(--modal-control-background, rgba(42, 44, 50, 0.64));
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.modal-close > svg,
+.settings-window-close > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-close:active,
+.settings-window-close:active {
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.24);
+  background: rgba(var(--modal-control-rgb, 42, 44, 50), 0.9);
+}
+
+.modal-close:focus-visible,
+.settings-window-close:focus-visible {
+  outline: 3px solid rgba(134, 175, 255, 0.62);
+  outline-offset: 2px;
+}
+
+@keyframes modalSurfaceReveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) translateZ(0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) translateZ(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-url-modal,
+  .settings-window {
+    animation: none;
+  }
+}

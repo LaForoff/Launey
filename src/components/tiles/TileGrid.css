@@ -1,0 +1,234 @@
+.tile-grid-shell {
+  width: min(854px, 100%);
+  margin: 0 auto;
+}
+
+.tile-grid-shell.is-empty {
+  height: 100%;
+}
+
+.tile-grid {
+  align-self: start;
+  display: grid;
+  grid-template-columns: repeat(7, 86px);
+  column-gap: 42px;
+  row-gap: 34px;
+  align-items: start;
+  justify-content: center;
+  width: min(854px, 100%);
+  margin: 0 auto;
+  padding: 0;
+}
+
+.tile-grid.is-hidden {
+  display: none;
+}
+
+.empty-space-state {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+  padding: 24px 28px;
+  box-sizing: border-box;
+  overflow: visible;
+  border: 0;
+  border-radius: 38px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.empty-space-state::before {
+  content: none;
+}
+
+.empty-space-state::after {
+  content: none;
+}
+
+.empty-space-state__glow {
+  display: none;
+}
+
+.empty-space-state__glow--violet {
+  top: -4%;
+  left: -3%;
+  width: 42%;
+  height: 28%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 72%);
+}
+
+.empty-space-state__glow--blue {
+  top: 3%;
+  right: -8%;
+  width: 54%;
+  height: 44%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 72%);
+}
+
+.empty-space-state__glow--bottom {
+  inset: auto auto -12% -6%;
+  width: 58%;
+  height: 40%;
+  background: radial-gradient(circle, rgba(16, 20, 28, 0.18) 0%, rgba(16, 20, 28, 0) 74%);
+}
+
+.empty-space-state__icon-button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 59px;
+  height: 59px;
+  opacity: 1;
+  color: rgba(245, 249, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.empty-space-state__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.empty-space-state__content h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: rgba(255, 255, 255, 0.96);
+  text-wrap: balance;
+  text-shadow: 0 2px 8px rgba(6, 10, 24, 0.34);
+}
+
+.empty-space-state__content p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.58);
+  text-wrap: balance;
+  text-shadow: 0 1px 5px rgba(6, 10, 24, 0.28);
+}
+
+.empty-space-state__cta {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 110px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #132560;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef3ff 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 18px 44px rgba(6, 10, 28, 0.22);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.empty-space-state__cta:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    0 20px 48px rgba(6, 10, 28, 0.26);
+  filter: brightness(1.01);
+}
+
+.empty-space-state__cta:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 980px) {
+  .tile-grid {
+    grid-template-columns: repeat(5, 86px);
+  }
+}
+
+@media (max-width: 760px) {
+  .tile-grid {
+    grid-template-columns: repeat(4, 72px);
+    column-gap: 26px;
+    row-gap: 28px;
+    width: 100%;
+  }
+
+  .empty-space-state {
+    gap: 12px;
+    padding: 20px 18px;
+    border-radius: 30px;
+  }
+
+  .empty-space-state__icon-button {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+  }
+
+  .empty-space-state__cta {
+    width: 104px;
+    height: 30px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .tile-grid {
+    grid-template-columns: repeat(3, 72px);
+    justify-content: center;
+    column-gap: 26px;
+    row-gap: 28px;
+  }
+
+  .empty-space-state {
+    gap: 10px;
+    padding: 16px 14px;
+    border-radius: 26px;
+  }
+
+  .empty-space-state__icon-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  .empty-space-state__content h2 {
+    font-size: 18px;
+  }
+
+  .empty-space-state__content p {
+    font-size: 13px;
+  }
+
+  .empty-space-state__cta {
+    width: 100px;
+    height: 29px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+}

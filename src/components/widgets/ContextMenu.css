@@ -1,0 +1,108 @@
+.context-menu {
+  position: fixed;
+  z-index: 30;
+  width: max-content;
+  min-width: 176px;
+  padding: 6px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.context-menu-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 17px;
+  background: rgba(18, 18, 24, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 18px 48px rgba(0, 0, 0, 0.28),
+    0 0 18px rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.04);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  backdrop-filter: blur(24px) saturate(1.15);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 32px;
+  gap: 8px;
+  padding: 0 8px;
+  color: inherit;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 540;
+  line-height: 1.15;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.context-menu-item:active {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.context-menu-item-danger:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.1);
+}
+
+.context-menu-item-danger:active:not(:disabled) {
+  background: rgba(255, 80, 80, 0.13);
+}
+
+.context-menu-item:disabled {
+  color: rgba(255, 255, 255, 0.36);
+  cursor: default;
+}
+
+.context-menu-item:disabled:active {
+  background: transparent;
+}
+
+.context-menu-icon {
+  display: grid;
+  width: 13px;
+  flex: 0 0 13px;
+  place-items: center;
+  color: currentColor;
+}
+
+.context-menu-item-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.context-menu-item-arrow {
+  display: inline-grid;
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: 5px 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.url-context-menu {
+  min-width: 140px;
+}
+
+.context-menu-submenu-wrap {
+  position: relative;
+}
+
+.context-menu-submenu {
+  position: fixed;
+  z-index: 31;
+  min-width: 140px;
+}

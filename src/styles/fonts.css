@@ -1,0 +1,8 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700;800&display=swap");
+
+/*
+Font switch:
+1. Replace @import in fonts.css
+2. Change --font-main in :root
+3. If needed, change --font-clock separately
+*/

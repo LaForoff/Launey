@@ -1,0 +1,78 @@
+.change-background-backdrop {
+  z-index: 40;
+}
+
+.change-background-modal {
+  width: min(445px, 100%);
+  height: auto;
+  min-height: auto;
+  border-radius: 28px;
+}
+
+.change-background-content {
+  display: grid;
+  gap: 10px;
+  padding-right: 12px;
+}
+
+.change-background-input {
+  width: 100%;
+}
+
+.background-file-button {
+  display: grid;
+  width: 100%;
+  height: 38px;
+  place-items: center;
+  overflow: hidden;
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: var(--modal-control-background, rgba(42, 44, 50, 0.64));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(30px);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.background-file-button:active {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.background-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+}
+
+.change-background-actions {
+  margin-top: 18px;
+}
+
+.change-background-toggle {
+  width: 100%;
+  background: transparent;
+}
+
+.background-file-button:focus-within {
+  outline: 3px solid rgba(255, 255, 255, 0.22);
+  outline-offset: 2px;
+}
+
+.modal-input-error,
+.modal-input-error:focus {
+  border-color: rgba(255, 95, 95, 0.9);
+  outline-color: transparent;
+  box-shadow: 0 0 0 4px rgba(255, 95, 95, 0.22);
+}

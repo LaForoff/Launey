@@ -1,0 +1,108 @@
+.folder-modal-backdrop {
+  z-index: 24;
+}
+
+.folder-modal {
+  width: min(688px, calc(100vw - 40px));
+  height: min(620px, calc(100svh - 48px));
+  padding: 12px 12px 16px 24px;
+}
+
+.folder-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  padding-right: 40px;
+}
+
+.folder-modal-title-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.folder-modal-header h2 {
+  margin: 0;
+  padding-top: 8px;
+  font-size: 20px;
+  line-height: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.folder-modal-menu-trigger {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  margin-top: 2px;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.folder-modal-menu-trigger:active {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.folder-modal-content {
+  height: calc(100% - 42px);
+  padding: 0 16px 16px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.folder-modal-content::-webkit-scrollbar {
+  display: none;
+}
+
+.folder-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 86px);
+  column-gap: 24px;
+  row-gap: 38px;
+  align-items: start;
+  justify-content: start;
+}
+
+@media (max-width: 760px) {
+  .folder-modal {
+    width: min(578px, calc(100vw - 40px));
+  }
+
+  .folder-modal-grid {
+    grid-template-columns: repeat(5, 86px);
+  }
+}
+
+@media (max-width: 620px) {
+  .folder-modal {
+    width: min(468px, calc(100vw - 32px));
+    height: min(620px, calc(100svh - 32px));
+  }
+
+  .folder-modal-grid {
+    grid-template-columns: repeat(4, 86px);
+  }
+}
+
+@media (max-width: 480px) {
+  .folder-modal {
+    width: min(358px, calc(100vw - 24px));
+  }
+
+  .folder-modal-grid {
+    grid-template-columns: repeat(3, 86px);
+  }
+}

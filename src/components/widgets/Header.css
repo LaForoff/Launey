@@ -1,0 +1,132 @@
+.header {
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 0;
+  text-align: center;
+  text-shadow:
+    0 1px 1px rgba(8, 16, 34, 0.16),
+    0 4px 12px rgba(8, 16, 34, 0.14);
+}
+
+.header-date {
+  margin: 0 0 9px;
+  color: rgba(255, 255, 255, 0.9);
+  min-height: 1.2em;
+  font-size: 14px;
+  font-weight: 520;
+  text-transform: capitalize;
+}
+
+.header-blur-line {
+  display: inline-block;
+  will-change: transform, filter, opacity;
+}
+
+.header-time {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.98);
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-family: var(--font-clock);
+  font-size: clamp(72px, 8.4vw, 72px);
+  line-height: 0.9;
+  font-weight: 640;
+  letter-spacing: 0;
+  font-variant-numeric: proportional-nums;
+  font-feature-settings: "pnum";
+}
+
+.time-separator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 0.92em;
+}
+
+.time-hours,
+.time-minutes {
+  display: inline-flex;
+  align-items: flex-end;
+  letter-spacing: -0.035em;
+}
+
+.header-time-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform, filter, opacity;
+}
+
+.time-separator {
+  width: 0.28em;
+  align-self: center;
+  display: inline-block;
+  transform: translateX(2px);
+  transition: opacity 180ms ease;
+}
+
+.header-time-colon {
+  position: relative;
+  height: 0.92em;
+}
+
+.header-time-colon::before,
+.header-time-colon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 0.12em;
+  height: 0.12em;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.header-time-colon::before {
+  top: 34%;
+}
+
+.header-time-colon::after {
+  top: 58%;
+}
+
+.time-separator.is-hidden {
+  opacity: 0;
+}
+
+.weather {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 20px;
+  min-height: 1.2em;
+  padding: 0;
+  border: 0;
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  backdrop-filter: none;
+  font-size: 16px;
+  font-weight: 560;
+  box-shadow: none;
+}
+
+.weather-animated {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  will-change: transform, filter, opacity;
+}
+
+.weather svg {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 1px 1px rgba(8, 16, 34, 0.16))
+    drop-shadow(0 4px 10px rgba(8, 16, 34, 0.12));
+}
+
+.weather-city,
+.weather-temp {
+  line-height: 1;
+}
