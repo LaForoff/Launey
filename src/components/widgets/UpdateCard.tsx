@@ -11,6 +11,7 @@ interface UpdateCardProps {
   lastCheckedAt: string
   checkOnOpen: boolean
   isChecking: boolean
+  hasChecked: boolean
   onCheck: () => void
   onShowChanges: () => void
   onInstall: () => void
@@ -23,6 +24,7 @@ export function UpdateCard({
   lastCheckedAt,
   checkOnOpen,
   isChecking,
+  hasChecked,
   onCheck,
   onShowChanges,
   onInstall,
@@ -38,7 +40,7 @@ export function UpdateCard({
           {state === 'idle' ? (
             <>
               <div className="settings-update-copy">
-                <strong>Проверить наличие обновлений</strong>
+                <strong>{hasChecked ? 'Обновлений нет' : 'Проверить наличие обновлений'}</strong>
                 <span>Последняя проверка: {lastCheckedAt}</span>
               </div>
               <button

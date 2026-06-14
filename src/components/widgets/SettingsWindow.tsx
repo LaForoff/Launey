@@ -24,7 +24,7 @@ import logoLauney from '../../assets/logo-launey.png'
 import themeDark from '../../assets/theme-dark.jpg'
 import themeLight from '../../assets/theme-light.jpg'
 import themeSystem from '../../assets/theme-system.jpg'
-import { BUILD_INFO } from '../../config/buildInfo'
+import { APP_VERSION, BUILD_INFO } from '../../config/buildInfo'
 import { DottedLogo } from '../ui/DottedLogo'
 import type { AppearanceTheme, AppSettings, SyncMeta } from '../../lib/settingsApi'
 import { formatDateTime } from '../../lib/formatBuildDate'
@@ -32,6 +32,7 @@ import type { LauneyExportFile } from '../../lib/launeySync'
 import {
   CURRENT_RELEASE,
   MOCK_UPDATE_RELEASE,
+  compareVersions,
   markUpdateCompleted,
   mockUpdateProvider,
   type UpdateRelease,
@@ -800,6 +801,8 @@ function UpdatesSection({ onShowReleaseNotes }: UpdatesSectionProps) {
   const [lastCheckedAt, setLastCheckedAt] = useState('13.06.2026 19:23')
   const [checkOnOpen, setCheckOnOpen] = useState(true)
   const [isChecking, setIsChecking] = useState(false)
+  const [hasChecked, setHasChecked] = useState(false)
+  const currentVersion = APP_VERSION
 
   useEffect(() => {
     if (cardState !== 'downloading') {
@@ -845,7 +848,8 @@ function UpdatesSection({ onShowReleaseNotes }: UpdatesSectionProps) {
       const nextRelease = await mockUpdateProvider.checkForUpdates()
       setRelease(nextRelease)
       setLastCheckedAt(formatUpdateCheckDate(new Date()))
-      setCardState(nextRelease.isUpdateAvailable ? 'available' : 'idle')
+      setHasChecked(true)
+      setCardState(compareVersions(currentVersion, nextRelease.version) < 0 ? 'available' : 'idle')
     } finally {
       setIsChecking(false)
     }
@@ -877,6 +881,7 @@ function UpdatesSection({ onShowReleaseNotes }: UpdatesSectionProps) {
           lastCheckedAt={lastCheckedAt}
           checkOnOpen={checkOnOpen}
           isChecking={isChecking}
+          hasChecked={hasChecked}
           onCheck={() => void handleCheck()}
           onShowChanges={() => onShowReleaseNotes(release)}
           onInstall={handleInstall}

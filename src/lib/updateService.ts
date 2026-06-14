@@ -1,3 +1,5 @@
+import { APP_VERSION } from '../config/buildInfo'
+
 export interface UpdateRelease {
   version: string
   size: string
@@ -14,8 +16,31 @@ export interface UpdateProvider {
 
 const COMPLETED_UPDATE_STORAGE_KEY = 'launey-completed-update'
 
+export const MOCK_LATEST_VERSION = '1.0.0'
+
+export function compareVersions(currentVersion: string, nextVersion: string) {
+  const currentParts = normalizeVersion(currentVersion)
+  const nextParts = normalizeVersion(nextVersion)
+  const maxLength = Math.max(currentParts.length, nextParts.length)
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const currentPart = currentParts[index] ?? 0
+    const nextPart = nextParts[index] ?? 0
+
+    if (currentPart < nextPart) {
+      return -1
+    }
+
+    if (currentPart > nextPart) {
+      return 1
+    }
+  }
+
+  return 0
+}
+
 export const CURRENT_RELEASE: UpdateRelease = {
-  version: '1.0.0',
+  version: APP_VERSION,
   size: '31,8 МБ',
   releaseNotes: [
     'Добавили перенос пространств, папок и URL между устройствами.',
@@ -30,7 +55,7 @@ export const CURRENT_RELEASE: UpdateRelease = {
 }
 
 export const MOCK_UPDATE_RELEASE: UpdateRelease = {
-  version: '1.0.1',
+  version: MOCK_LATEST_VERSION,
   size: '32,4 МБ',
   releaseNotes: [
     'Добавили раздел обновлений с проверкой новых версий.',
@@ -41,15 +66,18 @@ export const MOCK_UPDATE_RELEASE: UpdateRelease = {
     'Подготовили архитектуру для подключения GitHub Releases.',
   ],
   publishedAt: '2026-06-13T16:23:00.000Z',
-  downloadUrl: 'https://github.com/launey/releases/download/v1.0.1/Launey.zip',
-  isUpdateAvailable: true,
+  downloadUrl: 'https://github.com/launey/releases/download/v1.0.0/Launey.zip',
+  isUpdateAvailable: compareVersions(APP_VERSION, MOCK_LATEST_VERSION) < 0,
   downloadProgress: 45.7,
 }
 
 export const mockUpdateProvider: UpdateProvider = {
   async checkForUpdates() {
     await new Promise((resolve) => window.setTimeout(resolve, 450))
-    return { ...MOCK_UPDATE_RELEASE }
+    return {
+      ...MOCK_UPDATE_RELEASE,
+      isUpdateAvailable: compareVersions(APP_VERSION, MOCK_UPDATE_RELEASE.version) < 0,
+    }
   },
 }
 
@@ -64,4 +92,11 @@ export function getCompletedUpdateRelease() {
 
 export function clearCompletedUpdate() {
   window.localStorage.removeItem(COMPLETED_UPDATE_STORAGE_KEY)
+}
+
+function normalizeVersion(version: string) {
+  return version
+    .split('.')
+    .map((part) => Number.parseInt(part, 10))
+    .map((part) => (Number.isFinite(part) ? part : 0))
 }
