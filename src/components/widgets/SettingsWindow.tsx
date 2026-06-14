@@ -31,10 +31,8 @@ import { formatDateTime } from '../../lib/formatBuildDate'
 import type { LauneyExportFile } from '../../lib/launeySync'
 import {
   CURRENT_RELEASE,
-  MOCK_UPDATE_RELEASE,
   compareVersions,
-  markUpdateCompleted,
-  mockUpdateProvider,
+  githubUpdateProvider,
   type UpdateRelease,
 } from '../../lib/updateService'
 import { searchWeatherCities, type WeatherCitySuggestion } from '../../lib/weatherApi'
@@ -260,7 +258,7 @@ function SettingsWindowContent({
             <AboutSection animateLogo={shouldAnimateAboutLogo} />
           ) : null}
           {activeSection === 'updates' ? (
-            <UpdatesSection onShowReleaseNotes={setReleaseNotesRelease} />
+            <UpdatesSection onShowReleaseNotes={setReleaseNotesRelease} onNotify={onNotify} />
           ) : null}
         </div>
       </motion.section>
@@ -793,49 +791,17 @@ function AboutSection({ animateLogo }: { animateLogo: boolean }) {
 
 interface UpdatesSectionProps {
   onShowReleaseNotes: (release: UpdateRelease) => void
+  onNotify: (type: 'warning' | 'error', text: string) => void
 }
 
-function UpdatesSection({ onShowReleaseNotes }: UpdatesSectionProps) {
+function UpdatesSection({ onShowReleaseNotes, onNotify }: UpdatesSectionProps) {
   const [cardState, setCardState] = useState<UpdateCardState>('idle')
-  const [release, setRelease] = useState<UpdateRelease>(MOCK_UPDATE_RELEASE)
+  const [release, setRelease] = useState<UpdateRelease>(CURRENT_RELEASE)
   const [lastCheckedAt, setLastCheckedAt] = useState('13.06.2026 19:23')
   const [checkOnOpen, setCheckOnOpen] = useState(true)
   const [isChecking, setIsChecking] = useState(false)
   const [hasChecked, setHasChecked] = useState(false)
   const currentVersion = APP_VERSION
-
-  useEffect(() => {
-    if (cardState !== 'downloading') {
-      return
-    }
-
-    const intervalId = window.setInterval(() => {
-      setRelease((current) => {
-        const downloadProgress = Math.min(100, current.downloadProgress + 1)
-
-        if (downloadProgress === 100) {
-          window.clearInterval(intervalId)
-        }
-
-        return { ...current, downloadProgress }
-      })
-    }, 40)
-
-    return () => window.clearInterval(intervalId)
-  }, [cardState])
-
-  useEffect(() => {
-    if (cardState !== 'downloading' || release.downloadProgress < 100) {
-      return
-    }
-
-    const reloadTimeoutId = window.setTimeout(() => {
-      markUpdateCompleted(release.version)
-      window.location.reload()
-    }, 700)
-
-    return () => window.clearTimeout(reloadTimeoutId)
-  }, [cardState, release.downloadProgress])
 
   async function handleCheck() {
     if (isChecking) {
@@ -845,19 +811,16 @@ function UpdatesSection({ onShowReleaseNotes }: UpdatesSectionProps) {
     setIsChecking(true)
 
     try {
-      const nextRelease = await mockUpdateProvider.checkForUpdates()
+      const nextRelease = await githubUpdateProvider.checkForUpdates()
       setRelease(nextRelease)
       setLastCheckedAt(formatUpdateCheckDate(new Date()))
       setHasChecked(true)
       setCardState(compareVersions(currentVersion, nextRelease.version) < 0 ? 'available' : 'idle')
+    } catch {
+      onNotify('error', 'Не удалось проверить наличие обновлений')
     } finally {
       setIsChecking(false)
     }
-  }
-
-  function handleInstall() {
-    setRelease((current) => ({ ...current, downloadProgress: 0 }))
-    setCardState('downloading')
   }
 
   return (
@@ -884,7 +847,6 @@ function UpdatesSection({ onShowReleaseNotes }: UpdatesSectionProps) {
           hasChecked={hasChecked}
           onCheck={() => void handleCheck()}
           onShowChanges={() => onShowReleaseNotes(release)}
-          onInstall={handleInstall}
           onToggleCheckOnOpen={() => setCheckOnOpen((current) => !current)}
         />
 

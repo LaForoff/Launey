@@ -1,9 +1,8 @@
-import type { CSSProperties } from 'react'
 import type { UpdateRelease } from '../../lib/updateService'
 import { GlowSwap } from '../ui/GlowSwap'
 import { Switch } from '../ui/Switch'
 
-export type UpdateCardState = 'idle' | 'available' | 'downloading'
+export type UpdateCardState = 'idle' | 'available'
 
 interface UpdateCardProps {
   state: UpdateCardState
@@ -14,7 +13,6 @@ interface UpdateCardProps {
   hasChecked: boolean
   onCheck: () => void
   onShowChanges: () => void
-  onInstall: () => void
   onToggleCheckOnOpen: () => void
 }
 
@@ -27,7 +25,6 @@ export function UpdateCard({
   hasChecked,
   onCheck,
   onShowChanges,
-  onInstall,
   onToggleCheckOnOpen,
 }: UpdateCardProps) {
   return (
@@ -59,7 +56,7 @@ export function UpdateCard({
             <>
               <div className="settings-update-copy">
                 <strong>Launey {release.version}</strong>
-                <span>Вес: {release.size}</span>
+                <span>{release.title}</span>
               </div>
               <div className="settings-update-actions">
                 <button type="button" className="settings-inline-button" onClick={onShowChanges}>
@@ -68,34 +65,12 @@ export function UpdateCard({
                 <button
                   type="button"
                   className="settings-inline-button modal-button-primary"
-                  onClick={onInstall}
+                  disabled
                 >
                   Установить
                 </button>
               </div>
             </>
-          ) : null}
-
-          {state === 'downloading' ? (
-            <div className="settings-update-download">
-              <div className="settings-update-download-meta">
-                <strong>Launey {release.version}</strong>
-                <span>{formatDownloadedSize(release.size, release.downloadProgress)} / {release.size}</span>
-              </div>
-              <div
-                className="settings-update-progress"
-                role="progressbar"
-                aria-label={`Скачивание Launey ${release.version}`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={release.downloadProgress}
-              >
-                <span
-                  className="settings-update-progress-fill"
-                  style={{ '--settings-update-progress': `${release.downloadProgress}%` } as CSSProperties}
-                />
-              </div>
-            </div>
           ) : null}
         </GlowSwap>
       </div>
@@ -112,14 +87,4 @@ export function UpdateCard({
       </div>
     </article>
   )
-}
-
-function formatDownloadedSize(sizeLabel: string, progress: number) {
-  const totalSize = Number.parseFloat(sizeLabel.replace(',', '.'))
-
-  if (Number.isNaN(totalSize)) {
-    return '0 МБ'
-  }
-
-  return `${(totalSize * progress / 100).toFixed(1).replace('.', ',')} МБ`
 }

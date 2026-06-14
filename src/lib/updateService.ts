@@ -1,13 +1,12 @@
 import { APP_VERSION } from '../config/buildInfo'
 
 export interface UpdateRelease {
+  title: string
   version: string
-  size: string
   releaseNotes: string[]
   publishedAt: string
   downloadUrl: string
   isUpdateAvailable: boolean
-  downloadProgress: number
 }
 
 export interface UpdateProvider {
@@ -15,8 +14,7 @@ export interface UpdateProvider {
 }
 
 const COMPLETED_UPDATE_STORAGE_KEY = 'launey-completed-update'
-
-export const MOCK_LATEST_VERSION = '1.0.0'
+const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/LaForoff/Launey/releases/latest'
 
 export function compareVersions(currentVersion: string, nextVersion: string) {
   const currentParts = normalizeVersion(currentVersion)
@@ -40,8 +38,8 @@ export function compareVersions(currentVersion: string, nextVersion: string) {
 }
 
 export const CURRENT_RELEASE: UpdateRelease = {
+  title: 'Launey',
   version: APP_VERSION,
-  size: '31,8 МБ',
   releaseNotes: [
     'Добавили перенос пространств, папок и URL между устройствами.',
     'Обновили оформление настроек и унифицировали модальные окна.',
@@ -51,32 +49,43 @@ export const CURRENT_RELEASE: UpdateRelease = {
   publishedAt: '2026-06-01T10:00:00.000Z',
   downloadUrl: '',
   isUpdateAvailable: false,
-  downloadProgress: 0,
 }
 
-export const MOCK_UPDATE_RELEASE: UpdateRelease = {
-  version: MOCK_LATEST_VERSION,
-  size: '32,4 МБ',
-  releaseNotes: [
-    'Добавили раздел обновлений с проверкой новых версий.',
-    'Улучшили стабильность при переключении пространств.',
-    'Сделали перемещение ярлыков после удаления более плавным.',
-    'Унифицировали акцентные цвета ползунков и индикаторов прогресса.',
-    'Исправили небольшие визуальные ошибки в окне настроек.',
-    'Подготовили архитектуру для подключения GitHub Releases.',
-  ],
-  publishedAt: '2026-06-13T16:23:00.000Z',
-  downloadUrl: 'https://github.com/launey/releases/download/v1.0.0/Launey.zip',
-  isUpdateAvailable: compareVersions(APP_VERSION, MOCK_LATEST_VERSION) < 0,
-  downloadProgress: 45.7,
-}
-
-export const mockUpdateProvider: UpdateProvider = {
+export const githubUpdateProvider: UpdateProvider = {
   async checkForUpdates() {
-    await new Promise((resolve) => window.setTimeout(resolve, 450))
+    const response = await fetch(GITHUB_LATEST_RELEASE_URL, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`github-release-http-${response.status}`)
+    }
+
+    const payload = (await response.json()) as Partial<GithubLatestReleaseResponse>
+
+    if (
+      typeof payload.tag_name !== 'string' ||
+      typeof payload.body !== 'string' ||
+      typeof payload.published_at !== 'string'
+    ) {
+      throw new Error('github-release-invalid-payload')
+    }
+
+    const version = extractVersion(payload.tag_name)
+
+    if (!version) {
+      throw new Error('github-release-invalid-version')
+    }
+
     return {
-      ...MOCK_UPDATE_RELEASE,
-      isUpdateAvailable: compareVersions(APP_VERSION, MOCK_UPDATE_RELEASE.version) < 0,
+      title: typeof payload.name === 'string' && payload.name.trim() ? payload.name.trim() : `Launey ${version}`,
+      version,
+      releaseNotes: parseReleaseNotes(payload.body),
+      publishedAt: payload.published_at,
+      downloadUrl: typeof payload.html_url === 'string' ? payload.html_url : '',
+      isUpdateAvailable: compareVersions(APP_VERSION, version) < 0,
     }
   },
 }
@@ -87,7 +96,7 @@ export function markUpdateCompleted(version: string) {
 
 export function getCompletedUpdateRelease() {
   const completedVersion = window.localStorage.getItem(COMPLETED_UPDATE_STORAGE_KEY)
-  return completedVersion === MOCK_UPDATE_RELEASE.version ? MOCK_UPDATE_RELEASE : null
+  return completedVersion === CURRENT_RELEASE.version ? CURRENT_RELEASE : null
 }
 
 export function clearCompletedUpdate() {
@@ -95,8 +104,35 @@ export function clearCompletedUpdate() {
 }
 
 function normalizeVersion(version: string) {
-  return version
+  const normalizedVersion = extractVersion(version) ?? version
+
+  return normalizedVersion
     .split('.')
     .map((part) => Number.parseInt(part, 10))
     .map((part) => (Number.isFinite(part) ? part : 0))
+}
+
+function extractVersion(value: string) {
+  const match = value.trim().match(/\d+(?:\.\d+)+/)
+  return match?.[0] ?? null
+}
+
+function parseReleaseNotes(body: string) {
+  const parsedNotes = body
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*+]\s+/, ''))
+    .map((line) => line.replace(/^\d+\.\s+/, ''))
+    .filter((line) => !/^#+\s*/.test(line))
+
+  return parsedNotes.length > 0 ? parsedNotes : ['Список изменений недоступен']
+}
+
+interface GithubLatestReleaseResponse {
+  tag_name: string
+  name: string
+  body: string
+  published_at: string
+  html_url: string
 }
