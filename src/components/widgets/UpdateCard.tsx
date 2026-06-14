@@ -1,3 +1,4 @@
+import { Check } from '@phosphor-icons/react'
 import type { UpdateRelease } from '../../lib/updateService'
 import { GlowSwap } from '../ui/GlowSwap'
 import { Switch } from '../ui/Switch'
@@ -7,7 +8,7 @@ export type UpdateCardState = 'idle' | 'available'
 interface UpdateCardProps {
   state: UpdateCardState
   release: UpdateRelease
-  lastCheckedAt: string
+  lastCheckedAt: string | null
   checkOnOpen: boolean
   isChecking: boolean
   hasChecked: boolean
@@ -36,10 +37,32 @@ export function UpdateCard({
         >
           {state === 'idle' ? (
             <>
-              <div className="settings-update-copy">
-                <strong>{hasChecked ? 'Обновлений нет' : 'Проверить наличие обновлений'}</strong>
-                <span>Последняя проверка: {lastCheckedAt}</span>
-              </div>
+              {hasChecked ? (
+                <div className="settings-update-status">
+                  <span className="settings-update-status-icon" aria-hidden="true">
+                    <span className="settings-update-status-icon-disc">
+                      <Check size={16} weight="bold" />
+                    </span>
+                  </span>
+                  <div className="settings-update-copy">
+                    <strong>Последняя версия установлена</strong>
+                    <span>
+                      {lastCheckedAt
+                        ? `Launey ${release.version} · Последняя проверка: ${lastCheckedAt}`
+                        : `Launey ${release.version}`}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="settings-update-copy">
+                  <strong>Проверить наличие обновлений</strong>
+                  <span>
+                    {lastCheckedAt
+                      ? `Последняя проверка: ${lastCheckedAt}`
+                      : 'Последняя проверка ещё не выполнялась'}
+                  </span>
+                </div>
+              )}
               <button
                 type="button"
                 className="settings-inline-button"

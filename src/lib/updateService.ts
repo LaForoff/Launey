@@ -13,7 +13,13 @@ export interface UpdateProvider {
   checkForUpdates: () => Promise<UpdateRelease>
 }
 
+export interface StoredUpdateCheck {
+  checkedAt: string
+  release: UpdateRelease
+}
+
 const COMPLETED_UPDATE_STORAGE_KEY = 'launey-completed-update'
+const LAST_UPDATE_CHECK_STORAGE_KEY = 'launey-last-update-check'
 const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/LaForoff/Launey/releases/latest'
 
 export function compareVersions(currentVersion: string, nextVersion: string) {
@@ -101,6 +107,43 @@ export function getCompletedUpdateRelease() {
 
 export function clearCompletedUpdate() {
   window.localStorage.removeItem(COMPLETED_UPDATE_STORAGE_KEY)
+}
+
+export function getStoredUpdateCheck() {
+  const rawSnapshot = window.localStorage.getItem(LAST_UPDATE_CHECK_STORAGE_KEY)
+
+  if (!rawSnapshot) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(rawSnapshot) as Partial<StoredUpdateCheck>
+
+    if (
+      typeof parsed.checkedAt !== 'string' ||
+      !parsed.release ||
+      typeof parsed.release !== 'object' ||
+      typeof parsed.release.title !== 'string' ||
+      typeof parsed.release.version !== 'string' ||
+      !Array.isArray(parsed.release.releaseNotes) ||
+      typeof parsed.release.publishedAt !== 'string' ||
+      typeof parsed.release.downloadUrl !== 'string' ||
+      typeof parsed.release.isUpdateAvailable !== 'boolean'
+    ) {
+      return null
+    }
+
+    return {
+      checkedAt: parsed.checkedAt,
+      release: parsed.release,
+    } satisfies StoredUpdateCheck
+  } catch {
+    return null
+  }
+}
+
+export function storeUpdateCheck(snapshot: StoredUpdateCheck) {
+  window.localStorage.setItem(LAST_UPDATE_CHECK_STORAGE_KEY, JSON.stringify(snapshot))
 }
 
 function normalizeVersion(version: string) {

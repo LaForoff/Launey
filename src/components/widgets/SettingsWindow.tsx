@@ -32,7 +32,9 @@ import type { LauneyExportFile } from '../../lib/launeySync'
 import {
   CURRENT_RELEASE,
   compareVersions,
+  getStoredUpdateCheck,
   githubUpdateProvider,
+  storeUpdateCheck,
   type UpdateRelease,
 } from '../../lib/updateService'
 import { searchWeatherCities, type WeatherCitySuggestion } from '../../lib/weatherApi'
@@ -795,12 +797,15 @@ interface UpdatesSectionProps {
 }
 
 function UpdatesSection({ onShowReleaseNotes, onNotify }: UpdatesSectionProps) {
-  const [cardState, setCardState] = useState<UpdateCardState>('idle')
-  const [release, setRelease] = useState<UpdateRelease>(CURRENT_RELEASE)
-  const [lastCheckedAt, setLastCheckedAt] = useState('13.06.2026 19:23')
+  const storedUpdateCheck = useMemo(() => getStoredUpdateCheck(), [])
+  const [cardState, setCardState] = useState<UpdateCardState>(() =>
+    storedUpdateCheck && compareVersions(APP_VERSION, storedUpdateCheck.release.version) < 0 ? 'available' : 'idle',
+  )
+  const [release, setRelease] = useState<UpdateRelease>(storedUpdateCheck?.release ?? CURRENT_RELEASE)
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(storedUpdateCheck?.checkedAt ?? null)
   const [checkOnOpen, setCheckOnOpen] = useState(true)
   const [isChecking, setIsChecking] = useState(false)
-  const [hasChecked, setHasChecked] = useState(false)
+  const [hasChecked, setHasChecked] = useState(Boolean(storedUpdateCheck))
   const currentVersion = APP_VERSION
 
   async function handleCheck() {
@@ -812,10 +817,16 @@ function UpdatesSection({ onShowReleaseNotes, onNotify }: UpdatesSectionProps) {
 
     try {
       const nextRelease = await githubUpdateProvider.checkForUpdates()
+      const nextCheckedAt = formatUpdateCheckDate(new Date())
+
       setRelease(nextRelease)
-      setLastCheckedAt(formatUpdateCheckDate(new Date()))
+      setLastCheckedAt(nextCheckedAt)
       setHasChecked(true)
       setCardState(compareVersions(currentVersion, nextRelease.version) < 0 ? 'available' : 'idle')
+      storeUpdateCheck({
+        checkedAt: nextCheckedAt,
+        release: nextRelease,
+      })
     } catch {
       onNotify('error', 'Не удалось проверить наличие обновлений')
     } finally {

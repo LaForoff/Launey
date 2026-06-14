@@ -668,6 +668,35 @@
   gap: 7px;
 }
 
+.settings-update-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-update-status-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: rgba(54, 114, 70, 0.92);
+}
+
+.settings-update-status-icon-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: rgba(47, 104, 62, 0.98);
+  background: rgba(231, 240, 233, 0.88);
+}
+
 .settings-update-copy strong,
 .settings-update-download-meta strong {
   color: rgba(255, 255, 255, 0.94);
