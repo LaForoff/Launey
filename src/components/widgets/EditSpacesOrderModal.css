@@ -1,0 +1,78 @@
+.edit-spaces-modal {
+  width: min(445px, 100%);
+  max-height: min(520px, calc(100svh - 48px));
+  display: grid;
+  grid-template-rows: auto auto auto;
+  padding-right: 24px;
+}
+
+.edit-spaces-list {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-height: 44px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.edit-spaces-list::-webkit-scrollbar {
+  display: none;
+}
+
+.edit-space-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 24px;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: var(--modal-card-background, rgba(36, 38, 44, 0.78));
+}
+
+.edit-space-row.is-dragging {
+  z-index: 2;
+  box-shadow: 0 8px 18px rgba(6, 8, 14, 0.16);
+}
+
+.edit-space-handle,
+.edit-space-delete {
+  appearance: none;
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.56);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.edit-space-handle:active,
+.edit-space-delete:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.edit-space-delete:disabled {
+  opacity: 0.34;
+  cursor: default;
+}
+
+.edit-space-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 16px;
+  font-weight: 540;
+}
+
+.edit-spaces-actions {
+  margin-top: 18px;
+}

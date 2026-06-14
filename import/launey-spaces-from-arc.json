@@ -1,0 +1,514 @@
+{
+  "spaces": [
+    {
+      "id": "thebrowser.company.defaultPersonalSpaceID",
+      "title": "Главное",
+      "items": [
+        {
+          "type": "url",
+          "id": "C6725462-8BF2-4F53-8CAA-D4627D7C85AD",
+          "title": "Москва — схема метро",
+          "url": "https://yandex.ru/metro/moscow?scheme_id=sc34974011",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "15B79CB4-6E1D-459C-8FB4-4C66223904A4",
+          "title": "Skyrim Role Play",
+          "url": "https://vk.com/skyrimroleplay",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "A1A41B70-6E16-4DC1-8C66-A78605E9D476",
+          "title": "iPhones.ru — Новости высоких технологий, обзоры смартфонов, презентации Apple",
+          "url": "https://www.iphones.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "F0F3F745-524D-4D2B-97BE-490B6037FB99",
+          "title": "Бесплатные промокоды",
+          "url": "https://grupromo.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "B26F60C0-851F-47C5-8310-E09765398C5D",
+          "title": "Обои для рабочего стола, Full HD/4K заставки и картинки для любых устройств",
+          "url": "https://wallscloud.net/ru",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "07621F49-9738-4264-A400-5BFB7A80339A",
+          "title": "PlayStation®Plus | Hundreds of games to download and play, PlayStation classics, game trials and more",
+          "url": "https://www.playstation.com/en-tr/ps-plus/#subscriptions",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "D4C75964-757C-48CD-88CC-A96C548F4FEC",
+          "title": "4K Wallpapers of Abstract, 3D, Graphics in HD, 4K",
+          "url": "https://4kwallpapers.com/abstract/",
+          "icon": "",
+          "addFrame": true
+        }
+      ]
+    },
+    {
+      "id": "93C4E674-8AB4-4A03-B94A-D38E7DE9F972",
+      "title": "Дизайн",
+      "items": [
+        {
+          "type": "url",
+          "id": "3540290C-0671-4EA9-95DA-B97D63FA8266",
+          "title": "Бесплатный учебник по UX/UI-дизайну",
+          "url": "https://www.uprock.ru/education",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "folder",
+          "id": "DD63AF1A-785C-4226-8C68-6A9207F9CDAC",
+          "title": "UPROCK",
+          "items": [
+            {
+              "type": "url",
+              "id": "BB2D8E92-0B5A-432A-8489-1EF2297D88AD",
+              "title": "Oliver Peoples® Official Store US",
+              "url": "https://www.oliverpeoples.com/usa",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "FB1D9435-5A4F-49DA-A54E-7B2F38C4C726",
+              "title": "Behance",
+              "url": "https://www.behance.net/uprockpro?tracking_source=search_users%7Cevgeniy%20uprock",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "F531AA8F-926E-484A-A6C6-8EBE69459A86",
+              "title": "Каталог сайтов — UPROCK",
+              "url": "https://www.sites.uprock.ru/",
+              "icon": "",
+              "addFrame": true
+            }
+          ]
+        },
+        {
+          "type": "folder",
+          "id": "3532BEB6-7165-43EF-8511-7BA9697857AD",
+          "title": "Референсы",
+          "items": [
+            {
+              "type": "url",
+              "id": "55DDFED4-93D9-46A1-A439-CEA10F239508",
+              "title": "Godly — Astronomically good web design inspiration",
+              "url": "https://godly.website/",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "EA708665-8D22-4F69-89A1-50860825903A",
+              "title": "BentoGrids",
+              "url": "https://bentogrids.com/",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "4588328A-2F67-4BA2-861B-5852F9CDF500",
+              "title": "Awwwards - Website Awards - Best Web Design Trends",
+              "url": "https://www.awwwards.com/",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "CAC242A6-61F3-4DA8-AEF0-86C53BCAF54E",
+              "title": "6005 Landing Page Design Inspiration - Lapa Ninja",
+              "url": "https://www.lapa.ninja/?roistat_visit=2006054",
+              "icon": "",
+              "addFrame": true
+            }
+          ]
+        },
+        {
+          "type": "folder",
+          "id": "A82711F9-2AFB-4C93-81CB-69F252A19AA9",
+          "title": "Игры",
+          "items": [
+            {
+              "type": "url",
+              "id": "227307B0-98C0-4DA3-A21E-C4D893D22F2D",
+              "title": "Interface In Game | Collection of video games UI | Screenshots and videos",
+              "url": "https://interfaceingame.com/",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "250D8471-11A2-46D8-817E-DDCEE0A2EADA",
+              "title": "Assassin's Creed Mirage | Interface In Game | Video game UI",
+              "url": "https://interfaceingame.com/games/assassins-creed-mirage",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "4C3DF13D-3E9D-4792-8582-B2BFFAC521FF",
+              "title": "Assassin's Creed Valhalla | Interface In Game | Video game UI",
+              "url": "https://interfaceingame.com/games/assassins-creed-valhalla/",
+              "icon": "",
+              "addFrame": true
+            },
+            {
+              "type": "url",
+              "id": "794167EE-EC03-4A90-870B-7D6B63433CB7",
+              "title": "Game UI Database | Welcome",
+              "url": "https://www.gameuidatabase.com/",
+              "icon": "",
+              "addFrame": true
+            }
+          ]
+        },
+        {
+          "type": "folder",
+          "id": "F2960662-D7AD-40FA-878B-E9546874062D",
+          "title": "Конвертеры",
+          "items": [
+            {
+              "type": "url",
+              "id": "88E4D439-1AA6-48B0-9D1A-46B12601F42C",
+              "title": "Online Converter - Convert Image, Video, Audio, & Document Files",
+              "url": "https://www.freeconvert.com/video-compressor/download",
+              "icon": "",
+              "addFrame": true
+            }
+          ]
+        },
+        {
+          "type": "url",
+          "id": "DA879AAA-6B90-46B3-9EE1-F8F2B12FD0F8",
+          "title": "Lovable",
+          "url": "https://lovable.dev/pricing",
+          "icon": "",
+          "addFrame": true
+        }
+      ]
+    },
+    {
+      "id": "E71210C4-CB68-4AED-9A15-6BC8E143B77D",
+      "title": "Кино",
+      "items": [
+        {
+          "type": "url",
+          "id": "BDFE043D-8EF8-4888-B45B-37A808F61ABA",
+          "title": "Онлайн-кинотеатр PREMIER",
+          "url": "https://premier.one/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "8295FC2C-93C6-41AF-8B63-74BA3F1F2DDA",
+          "title": "Онлайн кинотеатр Кинопоиск. Фильмы и сериалы смотреть онлайн в хорошем качестве по подписке",
+          "url": "https://hd.kinopoisk.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "77FDDCE3-DDDD-4562-81FD-7E1EDCED86C3",
+          "title": "Онлайн-кинотеатр START — смотреть легальные фильмы, сериалы, мультфильмы онлайн. Интернет кинотеатр с хорошим качеством видео",
+          "url": "https://start.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "336E44EE-5381-4D51-92E0-D9DCD6F8171C",
+          "title": "VK Видео — смотреть онлайн бесплатно",
+          "url": "https://vk.com/video",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "C631874D-9A72-4575-9518-25873856D3FA",
+          "title": "Онлайн-кинотеатр KION - фильмы, сериалы, ТВ и мультфильмы смотреть онлайн бесплатно в хорошем качестве",
+          "url": "https://kion.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "9CF60B78-8876-4274-BD2E-11C6DEB9FD28",
+          "title": "Смотреть фильмы онлайн в хорошем качестве Full HD 720 и 1080. Лучшие новинки уже в онлайн-кинотеатре Okko!",
+          "url": "https://okko.tv/",
+          "icon": "",
+          "addFrame": true
+        }
+      ]
+    },
+    {
+      "id": "937F05B1-0E87-43B8-8356-7F27EB40E469",
+      "title": "Шопинг",
+      "items": [
+        {
+          "type": "url",
+          "id": "D12B409E-04C5-4A40-988C-0A03CE380C38",
+          "title": "Интернет-магазин Яндекс Маркет — покупки с быстрой доставкой",
+          "url": "https://market.yandex.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "7A291986-7EBC-4821-A5EC-F0B2829EC964",
+          "title": "OZON — интернет-магазин. Миллионы товаров по выгодным ценам",
+          "url": "https://www.ozon.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "2FC86AB4-67BA-42A3-B8AF-24E0BF404540",
+          "title": "Wildberries – Интернет-магазин модной одежды и обуви",
+          "url": "https://www.wildberries.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "AD58A31E-6824-4CA8-94D5-1D78FC0E1745",
+          "title": "Маркетплейс СберМегаМаркет - место выгодных покупок",
+          "url": "https://sbermegamarket.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "20D1ACDF-383C-4E23-9641-37AB15295005",
+          "title": "www.pepper.ru",
+          "url": "https://www.pepper.ru/new",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "D268DEE9-5C5B-4FA3-9B28-7252F29BE0E9",
+          "title": "Wishmaster – интернет магазин цифровой и бытовой техники в Москве по низким ценам.",
+          "url": "https://wishmaster.me/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "C50A956A-CFF7-42C6-B5C8-F3F2A91A17EE",
+          "title": "Скидки — Едадил",
+          "url": "https://edadeal.ru/moskva/offers",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "605B9EC7-697A-404C-ADF4-E9F16825CF7C",
+          "title": "AliExpress | Официальный сайт",
+          "url": "https://aliexpress.ru/?spm=a2g2w.cart.0.0.66154aa6xWkEHc",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "8102726A-B49E-4EF7-8D37-6A5990EDB9AC",
+          "title": "Купить мужскую одежду и обувь в интернет магазине Lamoda.ru",
+          "url": "https://www.lamoda.ru/men-home/",
+          "icon": "",
+          "addFrame": true
+        }
+      ]
+    },
+    {
+      "id": "C3E9E30F-0E05-4019-B6E8-269FC98544FC",
+      "title": "Аптеки",
+      "items": [
+        {
+          "type": "url",
+          "id": "AE4ABBE8-A19F-4302-89A7-ADAF8505992B",
+          "title": "Найти и купить недорогие лекарства в аптеках Москвы поможет сеть социальных аптек «Столички»",
+          "url": "https://stolichki.ru/?utm_referrer=https%3a%2f%2fwww.google.com%2f",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "0AD3C351-9A1A-44D6-A5D1-E56C00C7F384",
+          "title": "Ригла - интернет-аптека, наличие лекарств по низкой цене в Москве",
+          "url": "https://www.rigla.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "89DEBF33-38F2-4613-8AB9-F74744ABB821",
+          "title": "Здравсити - интернет-аптека, поиск лекарств онлайн, купить с доставкой в аптеку или на дом в Москве",
+          "url": "https://zdravcity.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "F0998C7C-06A8-4F9C-BAF3-B30F2B09E75F",
+          "title": "Интернет-аптека Горздрав: купить лекарства по низким ценам в Москве, наличие и поиск препаратов в онлайн аптеке на официальном сайте",
+          "url": "https://gorzdrav.org/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "566DE1AF-1B23-4605-B80A-09F3B110404D",
+          "title": "Интернет-аптека Apteka.ru в Люберцах, поиск лекарств, онлайн заказ, купить препараты в интернет-магазине лекарств",
+          "url": "https://apteka.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "074DB157-DC04-4FD7-B357-ABF39BE3CA55",
+          "title": "Интернет-аптека, поиск лекарств в аптеках Москвы, купить онлайн лекарственные препараты и медикаменты - ЕАПТЕКА",
+          "url": "https://www.eapteka.ru/?utm_referrer=https%3a%2f%2fwww.google.com%2f&utm_referrer=https%3a%2f%2fwww.eapteka.ru%2f%3futm_referrer%3dhttps%253a%252f%252fwww.google.com%252f",
+          "icon": "",
+          "addFrame": true
+        }
+      ]
+    },
+    {
+      "id": "9BF97BEC-DA48-44D3-8350-07D7AE62DB25",
+      "title": "music",
+      "items": [
+        {
+          "type": "url",
+          "id": "0AC4FFB7-07E5-40B7-937E-3D2568D57328",
+          "title": "Vocal Remover and Isolation [AI]",
+          "url": "https://vocalremover.org/",
+          "icon": "",
+          "addFrame": true
+        }
+      ]
+    },
+    {
+      "id": "arc-import",
+      "title": "Импорт Arc",
+      "items": [
+        {
+          "type": "url",
+          "id": "37CFFCDC-1A77-4CDF-9C13-0E03BCD4FDA1",
+          "title": "Dribbble - Discover the World’s Top Designers & Creative Professionals",
+          "url": "https://dribbble.com/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "16EF03F4-9917-4C6B-8790-267ACB196B14",
+          "title": "Behance :: Для вас",
+          "url": "https://www.behance.net/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "E641A29C-F863-4C82-A967-76C646898B9A",
+          "title": "Подписки - YouTube",
+          "url": "https://www.youtube.com/feed/subscriptions",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "73AEE379-D9A1-4CF4-AEE3-5C243EE8ECD8",
+          "title": "Входящие (1) - 4roffdesign@gmail.com - Gmail",
+          "url": "https://mail.google.com/mail/u/1/#inbox",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "47BF031A-CD78-406B-A3A7-92DB5035909F",
+          "title": "DeepL Translate – Самый точный переводчик в мире",
+          "url": "https://www.deepl.com/translator",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "6C0CE7E2-38FD-4CE7-8991-753B0017D9FE",
+          "title": "Продукты школы UPROCK",
+          "url": "https://lk1.uprock.ru/public/products",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "CF1F7C95-57F1-4870-A7C0-A39A0263E108",
+          "title": "appstorrent - игры и программы для macOS",
+          "url": "https://appstorrent.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "7375AFA3-0C43-4738-94BF-48790FAAE5D7",
+          "title": "Онлайн кинотеатр Кинопоиск. Фильмы и сериалы смотреть онлайн в хорошем качестве по подписке",
+          "url": "https://hd.kinopoisk.ru/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "059ADAF5-5BC9-4E01-AEED-ED068248A07A",
+          "title": "Dprofile — Главное",
+          "url": "https://dprofile.ru/#",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "61957A13-DB89-48DA-AEA3-2DD05C46337B",
+          "title": "Онлайн-кинотеатр PREMIER — сериалы, фильмы и мультфильмы в высоком качестве",
+          "url": "https://premier.one/",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "06F84285-2E69-441A-A14C-B61623AA4240",
+          "title": "Карта Люберец с улицами и номерами домов — Яндекс Карты",
+          "url": "https://yandex.ru/maps/10738/lubercy/?ll=37.898116%2C55.676494&z=14",
+          "icon": "",
+          "addFrame": true
+        },
+        {
+          "type": "url",
+          "id": "2E455A97-3CF4-4BF1-84E8-D1DAB564DC6F",
+          "title": "а что если...",
+          "url": "chrome-extension://dlnejlppicbjfcfcedcflplfjajinajd/index.html",
+          "icon": "",
+          "addFrame": true
+        }
+      ]
+    }
+  ]
+}

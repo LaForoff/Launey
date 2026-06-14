@@ -1,0 +1,83 @@
+.customizable-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  contain: paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.customizable-icon.has-custom-background {
+  background: var(--icon-custom-background, #00fff4);
+}
+
+.customizable-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, var(--icon-edge-alpha-start, 0.64)) 0%,
+    rgba(255, 255, 255, var(--icon-edge-alpha-mid, 0.08)) 50%,
+    rgba(255, 255, 255, var(--icon-edge-alpha-end, 0.64)) 100%
+  );
+  opacity: 0;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: opacity;
+}
+
+.customizable-icon.has-inline-border::after {
+  opacity: 1;
+  padding: var(--icon-edge-thickness, 2px);
+}
+
+.customizable-icon-volume {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(0, 0, 0, 1));
+  mix-blend-mode: hard-light;
+  opacity: 0;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: opacity;
+}
+
+.customizable-icon.has-custom-effects .customizable-icon-volume {
+  opacity: var(--icon-volume-alpha, 0.4);
+}
+
+.customizable-icon.volume-below-image .customizable-icon-volume {
+  z-index: 1;
+}
+
+.customizable-icon.volume-above-image .customizable-icon-volume {
+  z-index: 3;
+}
+
+.customizable-icon-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  position: relative;
+  z-index: 2;
+  transform: translateZ(0) scale(var(--icon-custom-scale, 1));
+  transform-origin: center;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
