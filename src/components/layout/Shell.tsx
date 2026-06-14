@@ -1834,15 +1834,6 @@ export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: She
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDeleteUrl}
       />
-      <ChangeBackgroundModal
-        isOpen={isBackgroundModalOpen}
-        initialValue={background}
-        onClose={() => setIsBackgroundModalOpen(false)}
-        onSave={handleSaveBackground}
-        onNotify={showToast}
-        notifyOnSuccess={!isSettingsOpen}
-        showApplyToAllToggle={false}
-      />
       <DeleteFolderModal
         isOpen={Boolean(folderDeleteTarget)}
         title={folderDeleteTarget?.title ?? ''}
@@ -1884,6 +1875,15 @@ export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: She
         onNotifySuccess={(text) => showToast('success', text)}
         onExport={handleExportData}
         onImport={handleImportData}
+      />
+      <ChangeBackgroundModal
+        isOpen={isBackgroundModalOpen}
+        initialValue={background}
+        onClose={() => setIsBackgroundModalOpen(false)}
+        onSave={handleSaveBackground}
+        onNotify={showToast}
+        notifyOnSuccess={!isSettingsOpen}
+        showApplyToAllToggle={false}
       />
       <EditSpacesOrderModal
         isOpen={isEditSpacesModalOpen}

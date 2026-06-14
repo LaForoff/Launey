@@ -46,7 +46,7 @@ import {
   getCenteredModalAnimation,
   getModalBackdropAnimation,
 } from './modalMotion'
-import { UpdateCard, type UpdateCardState } from './UpdateCard'
+import { UpdateCard, type UpdateCardVisualState } from './UpdateCard'
 import './SettingsWindow.css'
 
 type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about' | 'updates'
@@ -260,7 +260,11 @@ function SettingsWindowContent({
             <AboutSection animateLogo={shouldAnimateAboutLogo} />
           ) : null}
           {activeSection === 'updates' ? (
-            <UpdatesSection onShowReleaseNotes={setReleaseNotesRelease} onNotify={onNotify} />
+            <UpdatesSection
+              onShowReleaseNotes={setReleaseNotesRelease}
+              onNotify={onNotify}
+              onNotifySuccess={onNotifySuccess}
+            />
           ) : null}
         </div>
       </motion.section>
@@ -794,18 +798,18 @@ function AboutSection({ animateLogo }: { animateLogo: boolean }) {
 interface UpdatesSectionProps {
   onShowReleaseNotes: (release: UpdateRelease) => void
   onNotify: (type: 'warning' | 'error', text: string) => void
+  onNotifySuccess: (text: string) => void
 }
 
-function UpdatesSection({ onShowReleaseNotes, onNotify }: UpdatesSectionProps) {
+function UpdatesSection({ onShowReleaseNotes, onNotify, onNotifySuccess }: UpdatesSectionProps) {
   const storedUpdateCheck = useMemo(() => getStoredUpdateCheck(), [])
-  const [cardState, setCardState] = useState<UpdateCardState>(() =>
-    storedUpdateCheck && compareVersions(APP_VERSION, storedUpdateCheck.release.version) < 0 ? 'available' : 'idle',
+  const [cardState, setCardState] = useState<UpdateCardVisualState>(() =>
+    getUpdateCardState(APP_VERSION, storedUpdateCheck?.release),
   )
   const [release, setRelease] = useState<UpdateRelease>(storedUpdateCheck?.release ?? CURRENT_RELEASE)
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(storedUpdateCheck?.checkedAt ?? null)
   const [checkOnOpen, setCheckOnOpen] = useState(true)
   const [isChecking, setIsChecking] = useState(false)
-  const [hasChecked, setHasChecked] = useState(Boolean(storedUpdateCheck))
   const currentVersion = APP_VERSION
 
   async function handleCheck() {
@@ -813,21 +817,29 @@ function UpdatesSection({ onShowReleaseNotes, onNotify }: UpdatesSectionProps) {
       return
     }
 
+    console.log('[updates] check updates clicked')
     setIsChecking(true)
 
     try {
       const nextRelease = await githubUpdateProvider.checkForUpdates()
       const nextCheckedAt = formatUpdateCheckDate(new Date())
+      const nextCardState = getUpdateCardState(currentVersion, nextRelease)
 
       setRelease(nextRelease)
       setLastCheckedAt(nextCheckedAt)
-      setHasChecked(true)
-      setCardState(compareVersions(currentVersion, nextRelease.version) < 0 ? 'available' : 'idle')
+      setCardState(nextCardState)
+      console.log('[updates] final update status', nextCardState)
+
+      if (nextCardState === 'latest') {
+        onNotifySuccess('Установлена актуальная версия Launey')
+      }
+
       storeUpdateCheck({
         checkedAt: nextCheckedAt,
         release: nextRelease,
       })
-    } catch {
+    } catch (error) {
+      console.error('[updates] check failed', error)
       onNotify('error', 'Не удалось проверить наличие обновлений')
     } finally {
       setIsChecking(false)
@@ -855,7 +867,6 @@ function UpdatesSection({ onShowReleaseNotes, onNotify }: UpdatesSectionProps) {
           lastCheckedAt={lastCheckedAt}
           checkOnOpen={checkOnOpen}
           isChecking={isChecking}
-          hasChecked={hasChecked}
           onCheck={() => void handleCheck()}
           onShowChanges={() => onShowReleaseNotes(release)}
           onToggleCheckOnOpen={() => setCheckOnOpen((current) => !current)}
@@ -957,6 +968,24 @@ function formatUpdateCheckDate(date: Date) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
+}
+
+function getUpdateCardState(currentVersion: string, release?: UpdateRelease | null): UpdateCardVisualState {
+  if (!release) {
+    return 'idle'
+  }
+
+  const compareResult = compareVersions(currentVersion, release.version)
+
+  if (compareResult < 0) {
+    return 'available'
+  }
+
+  if (compareResult === 0) {
+    return 'latest'
+  }
+
+  return 'idle'
 }
 
 function getBackgroundLabel(background: SpaceBackground) {

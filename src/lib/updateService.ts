@@ -65,6 +65,19 @@ export const githubUpdateProvider: UpdateProvider = {
       },
     })
 
+    if (response.status === 404) {
+      console.log('[updates] APP_VERSION', APP_VERSION)
+      console.log('[updates] latestRelease.tag_name', `fallback:${APP_VERSION}`)
+      console.log('[updates] normalizedLatestVersion', APP_VERSION)
+      console.log('[updates] compareVersions result', 0)
+      console.warn('[updates] latest release endpoint returned 404, falling back to current app version')
+
+      return {
+        ...CURRENT_RELEASE,
+        publishedAt: new Date().toISOString(),
+      }
+    }
+
     if (!response.ok) {
       throw new Error(`github-release-http-${response.status}`)
     }
@@ -85,13 +98,20 @@ export const githubUpdateProvider: UpdateProvider = {
       throw new Error('github-release-invalid-version')
     }
 
+    const compareResult = compareVersions(APP_VERSION, version)
+
+    console.log('[updates] APP_VERSION', APP_VERSION)
+    console.log('[updates] latestRelease.tag_name', payload.tag_name)
+    console.log('[updates] normalizedLatestVersion', version)
+    console.log('[updates] compareVersions result', compareResult)
+
     return {
       title: typeof payload.name === 'string' && payload.name.trim() ? payload.name.trim() : `Launey ${version}`,
       version,
       releaseNotes: parseReleaseNotes(payload.body),
       publishedAt: payload.published_at,
       downloadUrl: typeof payload.html_url === 'string' ? payload.html_url : '',
-      isUpdateAvailable: compareVersions(APP_VERSION, version) < 0,
+      isUpdateAvailable: compareResult < 0,
     }
   },
 }

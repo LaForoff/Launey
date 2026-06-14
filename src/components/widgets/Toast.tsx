@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { createPortal } from 'react-dom'
 import './Toast.css'
 
 export interface ToastMessage {
@@ -16,7 +17,13 @@ export function Toast({ message }: ToastProps) {
     return null
   }
 
-  return (
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  const toastRoot = document.getElementById('modal-root') ?? document.body
+
+  return createPortal(
     <motion.div
       className={
         message.type === 'error'
@@ -32,5 +39,7 @@ export function Toast({ message }: ToastProps) {
     >
       {message.text}
     </motion.div>
+    ,
+    toastRoot,
   )
 }
