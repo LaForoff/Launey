@@ -4,9 +4,43 @@
 //
 
 import Foundation
+import Combine
 
 @MainActor
-final class ServerManager {
+final class ServerManager: ObservableObject {
+    enum Status {
+        case running
+        case starting
+        case stopped
+        case error
+
+        var menuBarTitle: String {
+            switch self {
+            case .running:
+                "🟢 Launey"
+            case .starting:
+                "🟡 Launey"
+            case .stopped:
+                "🔴 Launey"
+            case .error:
+                "⚠️ Launey"
+            }
+        }
+
+        var localizedTitle: String {
+            switch self {
+            case .running:
+                "Активен"
+            case .starting:
+                "Запуск..."
+            case .stopped:
+                "Не запущен"
+            case .error:
+                "Ошибка"
+            }
+        }
+    }
+
     static let shared = ServerManager()
 
     private let launchCommand = """
@@ -19,6 +53,8 @@ final class ServerManager {
     private var startupTask: Task<Bool, Never>?
     private var standardOutputPipe: Pipe?
     private var standardErrorPipe: Pipe?
+
+    @Published var status: Status = .stopped
 
     private init() {}
 
@@ -40,16 +76,21 @@ final class ServerManager {
     private func checkAndStartServerIfNeeded() async -> Bool {
         if await isServerAvailable() {
             print("[Launey] Server is already available at \(BrowserManager.applicationURL.absoluteString)")
+            status = .running
             return true
         }
 
+        status = .starting
+
         guard startServer() else {
+            status = .error
             return false
         }
 
         for attempt in 1...maximumAttempts {
             if await isServerAvailable() {
                 print("[Launey] Server became available after \(attempt) check(s)")
+                status = .running
                 return true
             }
 
@@ -58,6 +99,7 @@ final class ServerManager {
                     "[Launey] Server process exited before startup completed. "
                     + "Exit status: \(serverProcess.terminationStatus)"
                 )
+                status = .error
                 return false
             }
 
@@ -69,6 +111,7 @@ final class ServerManager {
             + "\(BrowserManager.applicationURL.absoluteString) after "
             + "\(maximumAttempts) attempts"
         )
+        status = .error
         return false
     }
 

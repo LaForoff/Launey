@@ -12,8 +12,10 @@ struct LauneyApp: App {
     @NSApplicationDelegateAdaptor(BrowserManager.self) private var browserManager
 
     var body: some Scene {
-        MenuBarExtra("Launey", systemImage: "bolt.fill") {
+        MenuBarExtra {
             MenuBarView()
+        } label: {
+            Image("MenuBarIcon")
         }
         .menuBarExtraStyle(.menu)
     }

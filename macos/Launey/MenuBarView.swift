@@ -7,9 +7,12 @@ import SwiftUI
 import AppKit
 
 struct MenuBarView: View {
+    @ObservedObject private var serverManager = ServerManager.shared
+
     var body: some View {
         Text("Launey")
-        Text("Версия 1.0.0")
+        Text("Version 1.0.0")
+        Text("Статус: \(serverManager.status.localizedTitle)")
 
         Divider()
 
