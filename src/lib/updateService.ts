@@ -6,7 +6,9 @@ export interface UpdateRelease {
   releaseNotes: string[]
   releaseNotesMarkdown: string
   publishedAt: string
-  downloadUrl: string
+  downloadUrl: string | null
+  downloadSize: number | null
+  downloadName: string | null
   isUpdateAvailable: boolean
 }
 
@@ -84,7 +86,9 @@ export const CURRENT_RELEASE: UpdateRelease = {
 - Исправлены визуальные артефакты при открытии интерфейсных элементов.
 `.trim(),
   publishedAt: '2026-06-01T10:00:00.000Z',
-  downloadUrl: 'https://github.com/LaForoff/Launey/releases/tag/1.0.0',
+  downloadUrl: null,
+  downloadSize: null,
+  downloadName: null,
   isUpdateAvailable: false,
 }
 
@@ -163,7 +167,13 @@ export function getStoredUpdateCheck() {
       !Array.isArray(parsed.release.releaseNotes) ||
       (typeof parsed.release.releaseNotesMarkdown !== 'string' && typeof parsed.release.releaseNotesMarkdown !== 'undefined') ||
       typeof parsed.release.publishedAt !== 'string' ||
-      typeof parsed.release.downloadUrl !== 'string' ||
+      (typeof parsed.release.downloadUrl !== 'string' && parsed.release.downloadUrl !== null) ||
+      (typeof parsed.release.downloadSize !== 'number' &&
+        parsed.release.downloadSize !== null &&
+        typeof parsed.release.downloadSize !== 'undefined') ||
+      (typeof parsed.release.downloadName !== 'string' &&
+        parsed.release.downloadName !== null &&
+        typeof parsed.release.downloadName !== 'undefined') ||
       typeof parsed.release.isUpdateAvailable !== 'boolean'
     ) {
       return null
@@ -177,6 +187,16 @@ export function getStoredUpdateCheck() {
           typeof parsed.release.releaseNotesMarkdown === 'string'
             ? parsed.release.releaseNotesMarkdown
             : parsed.release.releaseNotes.join('\n'),
+        downloadUrl:
+          typeof parsed.release.downloadName === 'string' &&
+          typeof parsed.release.downloadSize === 'number' &&
+          typeof parsed.release.downloadUrl === 'string'
+            ? parsed.release.downloadUrl
+            : null,
+        downloadSize:
+          typeof parsed.release.downloadSize === 'number' ? parsed.release.downloadSize : null,
+        downloadName:
+          typeof parsed.release.downloadName === 'string' ? parsed.release.downloadName : null,
       } as UpdateRelease,
     } satisfies StoredUpdateCheck
   } catch {
@@ -204,13 +224,29 @@ export function getStoredCurrentReleaseDetails() {
       !Array.isArray(parsed.releaseNotes) ||
       typeof parsed.releaseNotesMarkdown !== 'string' ||
       typeof parsed.publishedAt !== 'string' ||
-      typeof parsed.downloadUrl !== 'string' ||
+      (typeof parsed.downloadUrl !== 'string' && parsed.downloadUrl !== null) ||
+      (typeof parsed.downloadSize !== 'number' &&
+        parsed.downloadSize !== null &&
+        typeof parsed.downloadSize !== 'undefined') ||
+      (typeof parsed.downloadName !== 'string' &&
+        parsed.downloadName !== null &&
+        typeof parsed.downloadName !== 'undefined') ||
       typeof parsed.isUpdateAvailable !== 'boolean'
     ) {
       return null
     }
 
-    return parsed as UpdateRelease
+    return {
+      ...parsed,
+      downloadUrl:
+        typeof parsed.downloadName === 'string' &&
+        typeof parsed.downloadSize === 'number' &&
+        typeof parsed.downloadUrl === 'string'
+          ? parsed.downloadUrl
+          : null,
+      downloadSize: typeof parsed.downloadSize === 'number' ? parsed.downloadSize : null,
+      downloadName: typeof parsed.downloadName === 'string' ? parsed.downloadName : null,
+    } as UpdateRelease
   } catch {
     return null
   }
@@ -309,6 +345,13 @@ interface GithubLatestReleaseResponse {
   body: string
   published_at: string
   html_url: string
+  assets: GithubReleaseAsset[]
+}
+
+interface GithubReleaseAsset {
+  name: string
+  size: number
+  browser_download_url: string
 }
 
 async function fetchGithubRelease(url: string) {
@@ -327,6 +370,12 @@ async function fetchGithubRelease(url: string) {
   }
 
   const payload = (await response.json()) as Partial<GithubLatestReleaseResponse>
+  const assets = Array.isArray(payload.assets) ? payload.assets : []
+  const asset = selectDownloadAsset(assets)
+
+  console.log('[updates] release', payload)
+  console.log('[updates] assets', assets)
+  console.log('[updates] selected asset', asset)
 
   if (
     typeof payload.tag_name !== 'string' ||
@@ -348,7 +397,99 @@ async function fetchGithubRelease(url: string) {
     releaseNotes: parseReleaseNotes(payload.body),
     releaseNotesMarkdown: payload.body.trim() || 'Список изменений недоступен',
     publishedAt: payload.published_at,
-    downloadUrl: typeof payload.html_url === 'string' ? payload.html_url : '',
+    downloadUrl: asset?.browser_download_url ?? null,
+    downloadSize: asset?.size ?? null,
+    downloadName: asset?.name ?? null,
     isUpdateAvailable: compareVersions(APP_VERSION, version) < 0,
   } satisfies UpdateRelease
+}
+
+function selectDownloadAsset(assets: GithubReleaseAsset[]) {
+  const downloadableAssets = assets.filter(
+    (asset) =>
+      typeof asset?.name === 'string' &&
+      typeof asset?.size === 'number' &&
+      typeof asset?.browser_download_url === 'string',
+  )
+
+  return downloadableAssets.find((asset) => asset.name.toLowerCase().endsWith('.zip')) ??
+    downloadableAssets[0] ??
+    null
+}
+
+export async function downloadUpdateAsset(
+  release: UpdateRelease,
+  onProgress: (downloadedBytes: number, totalBytes: number | null) => void,
+) {
+  if (!release.downloadUrl) {
+    throw new Error('update-download-url-missing')
+  }
+
+  console.log('[updates] download started')
+
+  const response = await fetch(release.downloadUrl)
+
+  if (!response.ok) {
+    throw new Error(`update-download-http-${response.status}`)
+  }
+
+  const responseSize = Number.parseInt(response.headers.get('content-length') ?? '', 10)
+  const totalBytes =
+    Number.isFinite(responseSize) && responseSize > 0 ? responseSize : release.downloadSize
+  const reader = response.body?.getReader()
+
+  if (!reader) {
+    const blob = await response.blob()
+    onProgress(blob.size, totalBytes ?? blob.size)
+    console.log('[updates] progress', 100)
+    triggerBrowserDownload(blob, release.downloadName)
+    console.log('[updates] download finished')
+    return
+  }
+
+  const chunks: BlobPart[] = []
+  let downloadedBytes = 0
+  let lastLoggedProgress = -1
+
+  while (true) {
+    const { done, value } = await reader.read()
+
+    if (done) {
+      break
+    }
+
+    chunks.push(value)
+    downloadedBytes += value.byteLength
+    onProgress(downloadedBytes, totalBytes)
+
+    const progress = totalBytes
+      ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100))
+      : downloadedBytes
+
+    if (progress !== lastLoggedProgress) {
+      console.log('[updates] progress', progress)
+      lastLoggedProgress = progress
+    }
+  }
+
+  const blob = new Blob(chunks, {
+    type: response.headers.get('content-type') ?? 'application/zip',
+  })
+
+  onProgress(downloadedBytes, totalBytes ?? downloadedBytes)
+  triggerBrowserDownload(blob, release.downloadName)
+  console.log('[updates] download finished')
+}
+
+function triggerBrowserDownload(blob: Blob, fileName: string | null) {
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+
+  anchor.href = objectUrl
+  anchor.download = fileName?.trim() || 'Launey-update.zip'
+  anchor.style.display = 'none'
+  document.body.append(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)
 }

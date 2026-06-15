@@ -33,6 +33,7 @@ import type { LauneyExportFile } from '../../lib/launeySync'
 import {
   CURRENT_RELEASE,
   compareVersions,
+  downloadUpdateAsset,
   getCurrentReleaseDetails,
   getStoredCurrentReleaseDetails,
   getStoredUpdateCheck,
@@ -834,6 +835,9 @@ function UpdatesSection({
   const [currentRelease, setCurrentRelease] = useState<UpdateRelease>(storedCurrentRelease ?? CURRENT_RELEASE)
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(storedUpdateCheck?.checkedAt ?? null)
   const [isChecking, setIsChecking] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadedBytes, setDownloadedBytes] = useState(0)
+  const [downloadTotalBytes, setDownloadTotalBytes] = useState<number | null>(null)
   const currentVersion = APP_VERSION
 
   useEffect(() => {
@@ -888,6 +892,29 @@ function UpdatesSection({
     }
   }
 
+  async function handleInstall() {
+    if (isDownloading || !release.downloadUrl) {
+      return
+    }
+
+    setIsDownloading(true)
+    setDownloadedBytes(0)
+    setDownloadTotalBytes(release.downloadSize)
+
+    try {
+      await downloadUpdateAsset(release, (nextDownloadedBytes, nextTotalBytes) => {
+        setDownloadedBytes(nextDownloadedBytes)
+        setDownloadTotalBytes(nextTotalBytes)
+      })
+      onNotifySuccess('Обновление скачано')
+    } catch (error) {
+      console.error('[updates] download failed', error)
+      onNotify('error', 'Не удалось скачать обновление')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <div className="settings-section settings-section-updates">
       <header className="settings-section-header">
@@ -909,7 +936,11 @@ function UpdatesSection({
           lastCheckedAt={lastCheckedAt}
           checkOnOpen={settings.checkUpdatesOnOpen}
           isChecking={isChecking}
+          isDownloading={isDownloading}
+          downloadedBytes={downloadedBytes}
+          downloadTotalBytes={downloadTotalBytes}
           onCheck={() => void handleCheck()}
+          onInstall={() => void handleInstall()}
           onShowChanges={() => onShowReleaseNotes(release)}
           onToggleCheckOnOpen={() =>
             onChangeSettings((current) => ({

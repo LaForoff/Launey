@@ -708,6 +708,12 @@
   font-weight: 600;
 }
 
+.settings-update-download-meta strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .settings-update-copy span,
 .settings-update-download-meta span {
   color: rgba(255, 255, 255, 0.58);
@@ -799,6 +805,20 @@
   background: rgba(var(--slider-accent-rgb, 150, 165, 190), 0.72);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   transition: width 180ms ease;
+}
+
+.settings-update-progress.is-indeterminate .settings-update-progress-fill {
+  animation: settings-update-progress-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes settings-update-progress-indeterminate {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(300%);
+  }
 }
 
 .settings-current-version-card {
