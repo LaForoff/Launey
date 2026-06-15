@@ -417,79 +417,21 @@ function selectDownloadAsset(assets: GithubReleaseAsset[]) {
     null
 }
 
-export async function downloadUpdateAsset(
-  release: UpdateRelease,
-  onProgress: (downloadedBytes: number, totalBytes: number | null) => void,
-) {
+export function downloadUpdateAsset(release: UpdateRelease) {
   if (!release.downloadUrl) {
     throw new Error('update-download-url-missing')
   }
 
   console.log('[updates] download started')
 
-  const response = await fetch(release.downloadUrl)
-
-  if (!response.ok) {
-    throw new Error(`update-download-http-${response.status}`)
-  }
-
-  const responseSize = Number.parseInt(response.headers.get('content-length') ?? '', 10)
-  const totalBytes =
-    Number.isFinite(responseSize) && responseSize > 0 ? responseSize : release.downloadSize
-  const reader = response.body?.getReader()
-
-  if (!reader) {
-    const blob = await response.blob()
-    onProgress(blob.size, totalBytes ?? blob.size)
-    console.log('[updates] progress', 100)
-    triggerBrowserDownload(blob, release.downloadName)
-    console.log('[updates] download finished')
-    return
-  }
-
-  const chunks: BlobPart[] = []
-  let downloadedBytes = 0
-  let lastLoggedProgress = -1
-
-  while (true) {
-    const { done, value } = await reader.read()
-
-    if (done) {
-      break
-    }
-
-    chunks.push(value)
-    downloadedBytes += value.byteLength
-    onProgress(downloadedBytes, totalBytes)
-
-    const progress = totalBytes
-      ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100))
-      : downloadedBytes
-
-    if (progress !== lastLoggedProgress) {
-      console.log('[updates] progress', progress)
-      lastLoggedProgress = progress
-    }
-  }
-
-  const blob = new Blob(chunks, {
-    type: response.headers.get('content-type') ?? 'application/zip',
-  })
-
-  onProgress(downloadedBytes, totalBytes ?? downloadedBytes)
-  triggerBrowserDownload(blob, release.downloadName)
-  console.log('[updates] download finished')
-}
-
-function triggerBrowserDownload(blob: Blob, fileName: string | null) {
-  const objectUrl = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
 
-  anchor.href = objectUrl
-  anchor.download = fileName?.trim() || 'Launey-update.zip'
+  anchor.href = release.downloadUrl
+  anchor.download = release.downloadName?.trim() || 'Launey-update.zip'
+  anchor.target = '_blank'
+  anchor.rel = 'noopener'
   anchor.style.display = 'none'
   document.body.append(anchor)
   anchor.click()
   anchor.remove()
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)
 }

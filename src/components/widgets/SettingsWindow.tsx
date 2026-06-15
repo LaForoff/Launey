@@ -291,6 +291,8 @@ function SettingsWindowContent({
           <ReleaseNotesModal
             release={releaseNotesRelease}
             onClose={() => setReleaseNotesRelease(null)}
+            onNotify={onNotify}
+            onNotifySuccess={onNotifySuccess}
             shouldReduceMotion={shouldReduceMotion}
           />
         ) : null}
@@ -835,9 +837,6 @@ function UpdatesSection({
   const [currentRelease, setCurrentRelease] = useState<UpdateRelease>(storedCurrentRelease ?? CURRENT_RELEASE)
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(storedUpdateCheck?.checkedAt ?? null)
   const [isChecking, setIsChecking] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
-  const [downloadedBytes, setDownloadedBytes] = useState(0)
-  const [downloadTotalBytes, setDownloadTotalBytes] = useState<number | null>(null)
   const currentVersion = APP_VERSION
 
   useEffect(() => {
@@ -892,26 +891,17 @@ function UpdatesSection({
     }
   }
 
-  async function handleInstall() {
-    if (isDownloading || !release.downloadUrl) {
+  function handleInstall() {
+    if (!release.downloadUrl) {
       return
     }
 
-    setIsDownloading(true)
-    setDownloadedBytes(0)
-    setDownloadTotalBytes(release.downloadSize)
-
     try {
-      await downloadUpdateAsset(release, (nextDownloadedBytes, nextTotalBytes) => {
-        setDownloadedBytes(nextDownloadedBytes)
-        setDownloadTotalBytes(nextTotalBytes)
-      })
-      onNotifySuccess('Обновление скачано')
+      downloadUpdateAsset(release)
+      onNotifySuccess('Началось скачивание обновления')
     } catch (error) {
       console.error('[updates] download failed', error)
       onNotify('error', 'Не удалось скачать обновление')
-    } finally {
-      setIsDownloading(false)
     }
   }
 
@@ -936,11 +926,8 @@ function UpdatesSection({
           lastCheckedAt={lastCheckedAt}
           checkOnOpen={settings.checkUpdatesOnOpen}
           isChecking={isChecking}
-          isDownloading={isDownloading}
-          downloadedBytes={downloadedBytes}
-          downloadTotalBytes={downloadTotalBytes}
           onCheck={() => void handleCheck()}
-          onInstall={() => void handleInstall()}
+          onInstall={handleInstall}
           onShowChanges={() => onShowReleaseNotes(release)}
           onToggleCheckOnOpen={() =>
             onChangeSettings((current) => ({
@@ -981,12 +968,31 @@ function CurrentVersionCard({ release }: { release: UpdateRelease }) {
 function ReleaseNotesModal({
   release,
   onClose,
+  onNotify,
+  onNotifySuccess,
   shouldReduceMotion,
 }: {
   release: UpdateRelease
   onClose: () => void
+  onNotify: (type: 'warning' | 'error', text: string) => void
+  onNotifySuccess: (text: string) => void
   shouldReduceMotion: boolean
 }) {
+  function handleInstall() {
+    if (!release.downloadUrl) {
+      return
+    }
+
+    try {
+      downloadUpdateAsset(release)
+      onNotifySuccess('Началось скачивание обновления')
+      onClose()
+    } catch (error) {
+      console.error('[updates] download failed', error)
+      onNotify('error', 'Не удалось скачать обновление')
+    }
+  }
+
   function handleBackdropPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.target === event.currentTarget) {
       onClose()
@@ -1008,8 +1014,8 @@ function ReleaseNotesModal({
           secondaryLabel: 'Установить позже',
           onSecondary: onClose,
           primaryLabel: 'Установить сейчас',
-          onPrimary: () => {},
-          primaryDisabled: true,
+          onPrimary: handleInstall,
+          primaryDisabled: !release.downloadUrl,
         }}
       />
     </motion.div>

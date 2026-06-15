@@ -1,5 +1,4 @@
-import { Check, DownloadSimple } from '@phosphor-icons/react'
-import type { CSSProperties } from 'react'
+import { Check } from '@phosphor-icons/react'
 import type { UpdateRelease } from '../../lib/updateService'
 import { GlowSwap } from '../ui/GlowSwap'
 import { Switch } from '../ui/Switch'
@@ -13,9 +12,6 @@ interface UpdateCardProps {
   lastCheckedAt: string | null
   checkOnOpen: boolean
   isChecking: boolean
-  isDownloading: boolean
-  downloadedBytes: number
-  downloadTotalBytes: number | null
   onCheck: () => void
   onInstall: () => void
   onShowChanges: () => void
@@ -28,9 +24,6 @@ export function UpdateCard({
   lastCheckedAt,
   checkOnOpen,
   isChecking,
-  isDownloading,
-  downloadedBytes,
-  downloadTotalBytes,
   onCheck,
   onInstall,
   onShowChanges,
@@ -40,45 +33,10 @@ export function UpdateCard({
     <article className="settings-card settings-update-card">
       <div className="settings-update-card-main">
         <GlowSwap
-          swapKey={isDownloading ? 'downloading' : state}
+          swapKey={state}
           className="settings-update-state"
         >
-          {isDownloading ? (
-            <div className="settings-update-download">
-              <div className="settings-update-download-meta">
-                <strong>
-                  <DownloadSimple size={15} weight="bold" />
-                  Скачивание Launey {release.version}
-                </strong>
-                <span>{formatDownloadProgress(downloadedBytes, downloadTotalBytes)}</span>
-              </div>
-              <div
-                className={
-                  downloadTotalBytes
-                    ? 'settings-update-progress'
-                    : 'settings-update-progress is-indeterminate'
-                }
-                role="progressbar"
-                aria-label="Скачивание обновления"
-                aria-valuemin={0}
-                aria-valuemax={downloadTotalBytes ?? undefined}
-                aria-valuenow={downloadTotalBytes ? downloadedBytes : undefined}
-              >
-                <span
-                  className="settings-update-progress-fill"
-                  style={
-                    {
-                      '--settings-update-progress': downloadTotalBytes
-                        ? `${Math.min(100, (downloadedBytes / downloadTotalBytes) * 100)}%`
-                        : '36%',
-                    } as CSSProperties
-                  }
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {!isDownloading && state === 'idle' ? (
+          {state === 'idle' ? (
             <>
               <div className="settings-update-copy">
                 <strong>Проверить наличие обновлений</strong>
@@ -100,7 +58,7 @@ export function UpdateCard({
             </>
           ) : null}
 
-          {!isDownloading && state === 'latest' ? (
+          {state === 'latest' ? (
             <>
               <div className="settings-update-status">
                 <span className="settings-update-status-icon" aria-hidden="true">
@@ -125,7 +83,7 @@ export function UpdateCard({
             </>
           ) : null}
 
-          {!isDownloading && state === 'available' ? (
+          {state === 'available' ? (
             <>
               <div className="settings-update-copy">
                 <strong>Launey {release.version}</strong>
@@ -161,16 +119,4 @@ export function UpdateCard({
       </div>
     </article>
   )
-}
-
-function formatDownloadProgress(downloadedBytes: number, totalBytes: number | null) {
-  const downloaded = formatFileSize(downloadedBytes)
-  return totalBytes ? `${downloaded} / ${formatFileSize(totalBytes)}` : downloaded
-}
-
-function formatFileSize(bytes: number) {
-  return `${(bytes / 1_000_000).toLocaleString('ru-RU', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })} МБ`
 }

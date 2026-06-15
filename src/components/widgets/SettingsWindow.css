@@ -701,21 +701,13 @@
   background: rgba(231, 240, 233, 0.88);
 }
 
-.settings-update-copy strong,
-.settings-update-download-meta strong {
+.settings-update-copy strong {
   color: rgba(255, 255, 255, 0.94);
   font-size: 13px;
   font-weight: 600;
 }
 
-.settings-update-download-meta strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.settings-update-copy span,
-.settings-update-download-meta span {
+.settings-update-copy span {
   color: rgba(255, 255, 255, 0.58);
   font-size: 11px;
   font-weight: 500;
@@ -772,53 +764,6 @@
 
 .settings-update-toggle .launey-switch {
   pointer-events: auto;
-}
-
-.settings-update-download {
-  display: grid;
-  width: 100%;
-  gap: 9px;
-}
-
-.settings-update-download-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.settings-update-progress {
-  width: 100%;
-  height: 12px;
-  padding: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  overflow: hidden;
-}
-
-.settings-update-progress-fill {
-  display: block;
-  width: var(--settings-update-progress, 0%);
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(var(--slider-accent-rgb, 150, 165, 190), 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  transition: width 180ms ease;
-}
-
-.settings-update-progress.is-indeterminate .settings-update-progress-fill {
-  animation: settings-update-progress-indeterminate 1.1s ease-in-out infinite;
-}
-
-@keyframes settings-update-progress-indeterminate {
-  from {
-    transform: translateX(-120%);
-  }
-
-  to {
-    transform: translateX(300%);
-  }
 }
 
 .settings-current-version-card {

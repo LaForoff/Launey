@@ -83,6 +83,7 @@ export function UpdateAvailableModal({
                 onSecondary: onRemindLater,
                 primaryLabel: 'Установить сейчас',
                 onPrimary: onInstallNow,
+                primaryDisabled: !release.downloadUrl,
               }}
             />
           </motion.div>

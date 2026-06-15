@@ -10,6 +10,7 @@ import {
 } from './lib/settingsApi'
 import {
   clearUpdateReminder,
+  downloadUpdateAsset,
   getCompletedUpdateRelease,
   githubUpdateProvider,
   setUpdateReminder,
@@ -29,10 +30,10 @@ function App() {
   const [completedUpdate, setCompletedUpdate] = useState<UpdateRelease | null>(() =>
     getCompletedUpdateRelease(),
   )
-  const [settingsOpenRequest, setSettingsOpenRequest] = useState<{
+  const settingsOpenRequest: {
     key: number
     section: SettingsSection
-  } | null>(null)
+  } | null = null
   const hasCheckedStartupUpdateRef = useRef(false)
   const isSplashVisible = useMemo(
     () => !(isSplashAnimationDone && isBackgroundReady),
@@ -136,11 +137,16 @@ function App() {
   }
 
   function handleInstallNow() {
-    setAvailableUpdate(null)
-    setSettingsOpenRequest({
-      key: Date.now(),
-      section: 'updates',
-    })
+    if (!availableUpdate?.downloadUrl) {
+      return
+    }
+
+    try {
+      downloadUpdateAsset(availableUpdate)
+      setAvailableUpdate(null)
+    } catch (error) {
+      console.error('[updates] download failed', error)
+    }
   }
 
   return (
