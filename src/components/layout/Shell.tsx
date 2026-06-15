@@ -20,7 +20,7 @@ import { CreateSpaceModal } from '../widgets/CreateSpaceModal'
 import { CreateFolderModal, type FolderSelectionRef } from '../widgets/CreateFolderModal'
 import { EditSpacesOrderModal } from '../widgets/EditSpacesOrderModal'
 import { SpaceMenu } from '../widgets/SpaceMenu'
-import { SettingsWindow } from '../widgets/SettingsWindow'
+import { SettingsWindow, type SettingsSection } from '../widgets/SettingsWindow'
 import { Toast, type ToastMessage } from '../widgets/Toast'
 import { UrlContextMenu } from '../widgets/UrlContextMenu'
 import { TileGrid } from '../tiles/TileGrid'
@@ -62,9 +62,18 @@ interface ShellProps {
   spaces: Space[]
   activeSpaceIndex: number
   autoFocusSearch?: boolean
+  settingsOpenRequest?: {
+    key: number
+    section: SettingsSection
+  } | null
 }
 
-export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: ShellProps) {
+export function Shell({
+  spaces,
+  activeSpaceIndex,
+  autoFocusSearch = false,
+  settingsOpenRequest = null,
+}: ShellProps) {
   const {
     spaces: localSpaces,
     setSpaces,
@@ -124,6 +133,7 @@ export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: She
   const [isSpaceTitleEditing, setIsSpaceTitleEditing] = useState(false)
   const [spaceTitleDraft, setSpaceTitleDraft] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [requestedSettingsSection, setRequestedSettingsSection] = useState<SettingsSection | null>(null)
   const [appSettings, setAppSettings] = useState<AppSettings>(
     () => loadAppSettingsFromLocalStorage() ?? DEFAULT_APP_SETTINGS,
   )
@@ -217,6 +227,16 @@ export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: She
     mediaQuery.addEventListener('change', applyTheme)
     return () => mediaQuery.removeEventListener('change', applyTheme)
   }, [previewSettings.appearanceTheme])
+
+  useEffect(() => {
+    if (!settingsOpenRequest) {
+      return
+    }
+
+    setRequestedSettingsSection(settingsOpenRequest.section)
+    setDraftAppSettings(appSettings)
+    setIsSettingsOpen(true)
+  }, [settingsOpenRequest])
 
   useEffect(() => {
     const root = document.documentElement
@@ -406,12 +426,14 @@ export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: She
     setIsSpaceTitleEditing(true)
   }
 
-  function openSettingsPanel() {
+  function openSettingsPanel(section: SettingsSection | null = null) {
+    setRequestedSettingsSection(section)
     setDraftAppSettings(appSettings)
     setIsSettingsOpen(true)
   }
 
   function closeSettingsPanel() {
+    setRequestedSettingsSection(null)
     setDraftAppSettings(appSettings)
     setIsSettingsOpen(false)
   }
@@ -1666,11 +1688,17 @@ export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: She
                 as="span"
                 swapKey={isSpaceTitleEditing ? 'save' : 'edit'}
                 className="space-edit-label"
+                intensity="soft"
               >
                 {isSpaceTitleEditing ? 'Сохранить' : 'Редактировать'}
               </GlowSwap>
             </button>
-            <button type="button" className="space-settings-button" aria-label="Открыть настройки" onClick={openSettingsPanel}>
+            <button
+              type="button"
+              className="space-settings-button"
+              aria-label="Открыть настройки"
+              onClick={() => openSettingsPanel()}
+            >
               <GearSix size={16} weight="fill" />
             </button>
           </div>
@@ -1868,6 +1896,7 @@ export function Shell({ spaces, activeSpaceIndex, autoFocusSearch = false }: She
       <SettingsWindow
         isOpen={isSettingsOpen}
         draftSettings={draftAppSettings}
+        requestedSection={requestedSettingsSection}
         onClose={closeSettingsPanel}
         onDraftSettingsChange={handleDraftSettingsChange}
         onOpenBackgroundPicker={openBackgroundModal}

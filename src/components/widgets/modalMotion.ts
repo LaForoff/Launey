@@ -1,20 +1,20 @@
 export const MODAL_EASE = [0.2, 0.8, 0.2, 1] as const
 export const MODAL_EXIT_EASE = [0.4, 0, 1, 1] as const
-export const MODAL_DURATION = 0.3
+export const MODAL_DURATION = 0.22
 
 export function getModalBackdropAnimation(shouldReduceMotion: boolean) {
   if (shouldReduceMotion) {
     return {
       initial: { opacity: 0 },
       animate: { opacity: 1 },
-      exit: { opacity: 0, transition: { duration: 0.14 } },
+      exit: { opacity: 0, transition: { duration: 0.11 } },
     }
   }
 
   return {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
-    exit: { opacity: 0, transition: { duration: 0.17, ease: MODAL_EXIT_EASE } },
+    exit: { opacity: 0, transition: { duration: 0.13, ease: MODAL_EXIT_EASE } },
   }
 }
 
@@ -44,7 +44,7 @@ export function getCenteredModalAnimation(shouldReduceMotion: boolean) {
       animate: { opacity: 1 },
       exit: {
         opacity: 0,
-        transition: { duration: 0.14 },
+        transition: { duration: 0.11 },
       },
     }
   }
@@ -54,7 +54,7 @@ export function getCenteredModalAnimation(shouldReduceMotion: boolean) {
     animate: { opacity: 1 },
     exit: {
       opacity: 0,
-      transition: { duration: 0.18, ease: MODAL_EXIT_EASE },
+      transition: { duration: 0.14, ease: MODAL_EXIT_EASE },
     },
   }
 }
@@ -65,13 +65,13 @@ export const folderItemsContainerVariants = {
     opacity: 1,
     transition: {
       delayChildren: 0.075,
-      staggerChildren: 0.022,
+      staggerChildren: 0.016,
     },
   },
   exit: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.018,
+      staggerChildren: 0.014,
       staggerDirection: -1,
     },
   },
@@ -83,7 +83,7 @@ export const folderItemVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.22,
+      duration: 0.17,
       ease: MODAL_EASE,
     },
   },
@@ -91,7 +91,7 @@ export const folderItemVariants = {
     opacity: 0,
     y: 6,
     transition: {
-      duration: 0.14,
+      duration: 0.11,
       ease: MODAL_EASE,
     },
   },

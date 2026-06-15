@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type TransitionEvent } from 'react'
-import { BUILD_INFO } from '../../config/buildInfo'
-import { formatBuildDate } from '../../lib/formatBuildDate'
+import { APP_VERSION } from '../../config/buildInfo'
 import { DottedLogo } from '../ui/DottedLogo'
 import './StartupSplash.css'
 
@@ -12,7 +11,7 @@ const LOGO_HOLD_MS = SPLASH_DEBUG ? 900 : 800
 const MIN_SPLASH_MS = SPLASH_DEBUG ? 1800 : 1600
 const EXIT_DELAY_MS = SPLASH_DEBUG ? 120 : 80
 const EXIT_DURATION_MS = SPLASH_DEBUG ? 820 : 680
-const BUILD_LABEL = `Last edit: ${formatBuildDate(BUILD_INFO.lastUpdatedAt)}`
+const BUILD_LABEL = `ver: ${APP_VERSION}`
 
 interface StartupSplashProps {
   appReady: boolean

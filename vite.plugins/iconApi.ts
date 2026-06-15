@@ -30,6 +30,7 @@ const DEFAULT_APP_SETTINGS = {
   appearanceTheme: 'system',
   backgroundBlur: 0,
   backgroundDim: 0,
+  checkUpdatesOnOpen: true,
   weatherLocation: 'Russia, Moscow',
   background: { type: 'default' },
 } as const
@@ -310,6 +311,7 @@ type AppSettingsPayload = {
   appearanceTheme: 'system' | 'light' | 'dark'
   backgroundBlur: number
   backgroundDim: number
+  checkUpdatesOnOpen: boolean
   weatherLocation: string
   background:
     | { type: 'default' }
@@ -1573,6 +1575,7 @@ function sanitizeSettingsPayload(payload: Partial<AppSettingsPayload>): AppSetti
     appearanceTheme: normalizeAppearanceTheme(payload.appearanceTheme),
     backgroundBlur: normalizeSettingNumber(payload.backgroundBlur),
     backgroundDim: normalizeSettingNumber(payload.backgroundDim),
+    checkUpdatesOnOpen: normalizeCheckUpdatesOnOpen(payload.checkUpdatesOnOpen),
     weatherLocation: payload.weatherLocation.trim() || DEFAULT_APP_SETTINGS.weatherLocation,
     background: normalizeBackground(payload.background),
   }
@@ -1588,6 +1591,10 @@ function normalizeSettingNumber(value: number | undefined) {
   }
 
   return Math.max(0, Math.min(100, value))
+}
+
+function normalizeCheckUpdatesOnOpen(value: boolean | undefined) {
+  return typeof value === 'boolean' ? value : DEFAULT_APP_SETTINGS.checkUpdatesOnOpen
 }
 
 function normalizeBackground(value: Partial<AppSettingsPayload['background']> | undefined): AppSettingsPayload['background'] {

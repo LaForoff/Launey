@@ -26,12 +26,15 @@ import themeLight from '../../assets/theme-light.jpg'
 import themeSystem from '../../assets/theme-system.jpg'
 import { APP_VERSION, BUILD_INFO } from '../../config/buildInfo'
 import { DottedLogo } from '../ui/DottedLogo'
+import { ReleaseNotesMarkdown } from '../ui/ReleaseNotesMarkdown'
 import type { AppearanceTheme, AppSettings, SyncMeta } from '../../lib/settingsApi'
 import { formatDateTime } from '../../lib/formatBuildDate'
 import type { LauneyExportFile } from '../../lib/launeySync'
 import {
   CURRENT_RELEASE,
   compareVersions,
+  getCurrentReleaseDetails,
+  getStoredCurrentReleaseDetails,
   getStoredUpdateCheck,
   githubUpdateProvider,
   storeUpdateCheck,
@@ -47,9 +50,10 @@ import {
   getModalBackdropAnimation,
 } from './modalMotion'
 import { UpdateCard, type UpdateCardVisualState } from './UpdateCard'
+import { UpdateReleaseModalSurface } from './UpdateAvailableModal'
 import './SettingsWindow.css'
 
-type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about' | 'updates'
+export type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about' | 'updates'
 
 interface SettingsSliderProps {
   ariaLabel: string
@@ -65,6 +69,7 @@ interface SettingsSliderProps {
 interface SettingsWindowProps {
   isOpen: boolean
   draftSettings: AppSettings
+  requestedSection?: SettingsSection | null
   onClose: () => void
   onDraftSettingsChange: (updater: (current: AppSettings) => AppSettings) => void
   onOpenBackgroundPicker: () => void
@@ -89,6 +94,7 @@ const SIDEBAR_ITEMS: Array<{
 export function SettingsWindow({
   isOpen,
   draftSettings,
+  requestedSection = null,
   onClose,
   onDraftSettingsChange,
   onOpenBackgroundPicker,
@@ -105,6 +111,7 @@ export function SettingsWindow({
         {isOpen ? (
           <SettingsWindowContent
             draftSettings={draftSettings}
+            requestedSection={requestedSection}
             onClose={onClose}
             onDraftSettingsChange={onDraftSettingsChange}
             onOpenBackgroundPicker={onOpenBackgroundPicker}
@@ -126,6 +133,7 @@ interface SettingsWindowContentProps extends Omit<SettingsWindowProps, 'isOpen'>
 
 function SettingsWindowContent({
   draftSettings,
+  requestedSection,
   onClose,
   onDraftSettingsChange,
   onOpenBackgroundPicker,
@@ -174,6 +182,13 @@ function SettingsWindowContent({
     }
   }, [isPreviewingWallpaper])
 
+  useEffect(() => {
+    if (requestedSection) {
+      setActiveSection(requestedSection)
+      setShouldAnimateAboutLogo(requestedSection === 'about')
+    }
+  }, [requestedSection])
+
   const backgroundLabel = useMemo(() => getBackgroundLabel(draftSettings.background), [draftSettings.background])
 
   function handleBackdropPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
@@ -193,7 +208,7 @@ function SettingsWindowContent({
       className={isPreviewingWallpaper ? 'modal-backdrop settings-window-backdrop is-previewing' : 'modal-backdrop settings-window-backdrop'}
       role="presentation"
       {...getModalBackdropAnimation(shouldReduceMotion)}
-      transition={{ duration: shouldReduceMotion ? 0.18 : 0.32, ease: MODAL_EASE }}
+      transition={{ duration: shouldReduceMotion ? 0.14 : 0.24, ease: MODAL_EASE }}
       onPointerDown={handleBackdropPointerDown}
     >
       <motion.section
@@ -261,6 +276,8 @@ function SettingsWindowContent({
           ) : null}
           {activeSection === 'updates' ? (
             <UpdatesSection
+              settings={draftSettings}
+              onChangeSettings={onDraftSettingsChange}
               onShowReleaseNotes={setReleaseNotesRelease}
               onNotify={onNotify}
               onNotifySuccess={onNotifySuccess}
@@ -406,7 +423,7 @@ function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }
           className="modal-backdrop modal-backdrop-strong"
           role="presentation"
           {...getModalBackdropAnimation(shouldReduceMotion)}
-          transition={{ duration: shouldReduceMotion ? 0.18 : 0.32, ease: MODAL_EASE }}
+          transition={{ duration: shouldReduceMotion ? 0.14 : 0.24, ease: MODAL_EASE }}
         >
           <motion.section
             className="add-url-modal delete-url-modal"
@@ -757,8 +774,6 @@ function WeatherSection({ weatherLocation, onChange }: WeatherSectionProps) {
 }
 
 function AboutSection({ animateLogo }: { animateLogo: boolean }) {
-  const buildDateLabel = formatDateTime(BUILD_INFO.lastUpdatedAt)
-
   return (
     <div className="settings-section settings-section-about">
       <header className="settings-section-header">
@@ -773,7 +788,7 @@ function AboutSection({ animateLogo }: { animateLogo: boolean }) {
           revealDurationMs={420}
         />
         <h3>{BUILD_INFO.appName}</h3>
-        <p className="settings-about-version">Last edit: {buildDateLabel}</p>
+        <p className="settings-about-version">ver: {APP_VERSION}</p>
         <p className="settings-about-description">
           Персональная стартовая страница в стиле Apple Launchpad, превращающая обычные
           закладки в удобное и визуально цельное рабочее пространство с плавными анимациями и
@@ -796,28 +811,56 @@ function AboutSection({ animateLogo }: { animateLogo: boolean }) {
 }
 
 interface UpdatesSectionProps {
+  settings: AppSettings
+  onChangeSettings: (updater: (current: AppSettings) => AppSettings) => void
   onShowReleaseNotes: (release: UpdateRelease) => void
   onNotify: (type: 'warning' | 'error', text: string) => void
   onNotifySuccess: (text: string) => void
 }
 
-function UpdatesSection({ onShowReleaseNotes, onNotify, onNotifySuccess }: UpdatesSectionProps) {
+function UpdatesSection({
+  settings,
+  onChangeSettings,
+  onShowReleaseNotes,
+  onNotify,
+  onNotifySuccess,
+}: UpdatesSectionProps) {
   const storedUpdateCheck = useMemo(() => getStoredUpdateCheck(), [])
+  const storedCurrentRelease = useMemo(() => getStoredCurrentReleaseDetails(), [])
   const [cardState, setCardState] = useState<UpdateCardVisualState>(() =>
     getUpdateCardState(APP_VERSION, storedUpdateCheck?.release),
   )
   const [release, setRelease] = useState<UpdateRelease>(storedUpdateCheck?.release ?? CURRENT_RELEASE)
+  const [currentRelease, setCurrentRelease] = useState<UpdateRelease>(storedCurrentRelease ?? CURRENT_RELEASE)
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(storedUpdateCheck?.checkedAt ?? null)
-  const [checkOnOpen, setCheckOnOpen] = useState(true)
   const [isChecking, setIsChecking] = useState(false)
   const currentVersion = APP_VERSION
+
+  useEffect(() => {
+    let isCancelled = false
+
+    void getCurrentReleaseDetails()
+      .then((resolvedCurrentRelease) => {
+        if (!isCancelled) {
+          setCurrentRelease(resolvedCurrentRelease)
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setCurrentRelease(CURRENT_RELEASE)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
 
   async function handleCheck() {
     if (isChecking) {
       return
     }
 
-    console.log('[updates] check updates clicked')
     setIsChecking(true)
 
     try {
@@ -828,7 +871,6 @@ function UpdatesSection({ onShowReleaseNotes, onNotify, onNotifySuccess }: Updat
       setRelease(nextRelease)
       setLastCheckedAt(nextCheckedAt)
       setCardState(nextCardState)
-      console.log('[updates] final update status', nextCardState)
 
       if (nextCardState === 'latest') {
         onNotifySuccess('Установлена актуальная версия Launey')
@@ -865,14 +907,19 @@ function UpdatesSection({ onShowReleaseNotes, onNotify, onNotifySuccess }: Updat
           state={cardState}
           release={release}
           lastCheckedAt={lastCheckedAt}
-          checkOnOpen={checkOnOpen}
+          checkOnOpen={settings.checkUpdatesOnOpen}
           isChecking={isChecking}
           onCheck={() => void handleCheck()}
           onShowChanges={() => onShowReleaseNotes(release)}
-          onToggleCheckOnOpen={() => setCheckOnOpen((current) => !current)}
+          onToggleCheckOnOpen={() =>
+            onChangeSettings((current) => ({
+              ...current,
+              checkUpdatesOnOpen: !current.checkUpdatesOnOpen,
+            }))
+          }
         />
 
-        <CurrentVersionCard release={CURRENT_RELEASE} />
+        <CurrentVersionCard release={currentRelease} />
       </div>
     </div>
   )
@@ -891,7 +938,10 @@ function CurrentVersionCard({ release }: { release: UpdateRelease }) {
 
       <div className="settings-release-notes">
         <h3>Об этом обновлении</h3>
-        <ReleaseNotesList notes={release.releaseNotes} />
+        <ReleaseNotesMarkdown
+          className="settings-release-notes-content"
+          markdown={release.releaseNotesMarkdown}
+        />
       </div>
     </article>
   )
@@ -917,46 +967,21 @@ function ReleaseNotesModal({
       className="modal-backdrop modal-backdrop-strong"
       role="presentation"
       {...getModalBackdropAnimation(shouldReduceMotion)}
-      transition={{ duration: shouldReduceMotion ? 0.18 : 0.32, ease: MODAL_EASE }}
+      transition={{ duration: shouldReduceMotion ? 0.14 : 0.24, ease: MODAL_EASE }}
       onPointerDown={handleBackdropPointerDown}
     >
-      <motion.section
-        className="modal-surface settings-release-modal"
-        aria-modal="true"
-        aria-label="О новой версии"
-        {...getCenteredModalAnimation(shouldReduceMotion)}
-        transition={{ duration: shouldReduceMotion ? 0.18 : MODAL_DURATION, ease: MODAL_EASE }}
-      >
-        <header className="settings-release-modal-header">
-          <h2>О новой версии</h2>
-          <button type="button" className="modal-close" aria-label="Закрыть" onClick={onClose}>
-            <X size={18} weight="bold" />
-          </button>
-        </header>
-
-        <div className="settings-release-modal-content">
-          <div className="settings-release-modal-version">
-            <img src={logoLauney} alt="" />
-            <strong>Launey {release.version}</strong>
-          </div>
-
-          <div className="settings-release-notes">
-            <h3>О последнем обновлении</h3>
-            <ReleaseNotesList notes={release.releaseNotes} />
-          </div>
-        </div>
-      </motion.section>
+      <UpdateReleaseModalSurface
+        release={release}
+        onClose={onClose}
+        actions={{
+          secondaryLabel: 'Установить позже',
+          onSecondary: onClose,
+          primaryLabel: 'Установить сейчас',
+          onPrimary: () => {},
+          primaryDisabled: true,
+        }}
+      />
     </motion.div>
-  )
-}
-
-function ReleaseNotesList({ notes }: { notes: string[] }) {
-  return (
-    <ul className="settings-release-notes-list">
-      {notes.map((note) => (
-        <li key={note}>{note}</li>
-      ))}
-    </ul>
   )
 }
 

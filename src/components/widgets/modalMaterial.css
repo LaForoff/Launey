@@ -36,13 +36,14 @@
   content: '';
 }
 
-.modal-backdrop ~ .modal-backdrop::before,
-.modal-backdrop .modal-backdrop::before {
+.modal-backdrop ~ .modal-backdrop:not(.modal-backdrop-strong)::before,
+.modal-backdrop .modal-backdrop:not(.modal-backdrop-strong)::before {
   opacity: 0;
   animation: none;
 }
 
 .modal-backdrop-strong {
+  --modal-overlay-background: rgba(0, 0, 0, 0.52);
   background: transparent;
 }
 

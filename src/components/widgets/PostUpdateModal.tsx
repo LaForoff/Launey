@@ -2,6 +2,8 @@ import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'rea
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X } from '@phosphor-icons/react'
 import logoLauney from '../../assets/logo-launey.png'
+import updImageCover from '../../assets/upd-image-cover.png'
+import { ReleaseNotesMarkdown } from '../ui/ReleaseNotesMarkdown'
 import {
   clearCompletedUpdate,
   type UpdateRelease,
@@ -58,7 +60,7 @@ export function PostUpdateModal({ release, onClose }: PostUpdateModalProps) {
             className="modal-backdrop"
             role="presentation"
             {...getModalBackdropAnimation(shouldReduceMotion)}
-            transition={{ duration: shouldReduceMotion ? 0.18 : 0.38, ease: MODAL_EASE }}
+            transition={{ duration: shouldReduceMotion ? 0.14 : 0.24, ease: MODAL_EASE }}
             onPointerDown={handleBackdropPointerDown}
           >
             <motion.section
@@ -66,36 +68,34 @@ export function PostUpdateModal({ release, onClose }: PostUpdateModalProps) {
               aria-modal="true"
               aria-label="Launey обновился"
               {...getCenteredModalAnimation(shouldReduceMotion)}
-              transition={{ duration: shouldReduceMotion ? 0.18 : 0.46, ease: MODAL_EASE }}
-        >
-          <header className="post-update-modal-header">
-            <h2>Launey обновился!</h2>
-            <button type="button" className="modal-close" aria-label="Закрыть" onClick={handleClose}>
-              <X size={18} weight="bold" />
-            </button>
-          </header>
+              transition={{ duration: shouldReduceMotion ? 0.14 : 0.24, ease: MODAL_EASE }}
+            >
+              <header className="post-update-modal-cover">
+                <img className="post-update-modal-cover-image" src={updImageCover} alt="" />
+                <div className="post-update-modal-cover-brand">
+                  <img src={logoLauney} alt="" />
+                </div>
+                <button type="button" className="modal-close" aria-label="Закрыть" onClick={handleClose}>
+                  <X size={18} weight="bold" />
+                </button>
+              </header>
 
-          <div className="post-update-modal-content">
-            <div className="post-update-version">
-              <img src={logoLauney} alt="" />
-              <strong>Launey {release.version}</strong>
-            </div>
+              <div className="post-update-modal-content">
+                <div className="post-update-version">
+                  <strong>Встречайте, Launey {release.version}</strong>
+                </div>
 
-            <div className="post-update-notes">
-              <h3>О последнем обновлении</h3>
-              <ul>
-                {release.releaseNotes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+                <div className="post-update-notes">
+                  <h3>О последнем обновлении</h3>
+                  <ReleaseNotesMarkdown markdown={release.releaseNotesMarkdown} />
+                </div>
+              </div>
 
-          <footer className="post-update-modal-footer">
-            <button type="button" className="modal-button modal-button-primary" onClick={handleClose}>
-              Начать работу
-            </button>
-          </footer>
+              <footer className="post-update-modal-footer">
+                <button type="button" className="modal-button modal-button-primary" onClick={handleClose}>
+                  Начать работу
+                </button>
+              </footer>
             </motion.section>
           </motion.div>
         ) : null}

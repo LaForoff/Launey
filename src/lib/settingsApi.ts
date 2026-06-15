@@ -11,6 +11,7 @@ export interface AppSettings {
   appearanceTheme: AppearanceTheme
   backgroundBlur: number
   backgroundDim: number
+  checkUpdatesOnOpen: boolean
   weatherLocation: string
   background: SpaceBackground
   syncMeta: SyncMeta
@@ -20,6 +21,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   appearanceTheme: 'system',
   backgroundBlur: 0,
   backgroundDim: 0,
+  checkUpdatesOnOpen: true,
   weatherLocation: '',
   background: { type: 'default' },
   syncMeta: {
@@ -114,6 +116,7 @@ export function sanitizeAppSettings(
     appearanceTheme: sanitizeAppearanceTheme(payload.appearanceTheme),
     backgroundBlur: clampSetting(payload.backgroundBlur),
     backgroundDim: clampSetting(payload.backgroundDim),
+    checkUpdatesOnOpen: sanitizeCheckUpdatesOnOpen(payload.checkUpdatesOnOpen),
     weatherLocation: normalizedWeatherLocation,
     background: sanitizeBackground(payload.background),
     syncMeta: sanitizeSyncMeta(payload.syncMeta),
@@ -130,6 +133,10 @@ function clampSetting(value: number | undefined) {
   }
 
   return Math.max(0, Math.min(100, value))
+}
+
+function sanitizeCheckUpdatesOnOpen(value: boolean | undefined) {
+  return typeof value === 'boolean' ? value : true
 }
 
 function sanitizeBackground(value: Partial<SpaceBackground> | undefined): SpaceBackground {

@@ -853,14 +853,9 @@
   font-weight: 600;
 }
 
-.settings-release-notes-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0 0 0 17px;
-  color: rgba(255, 255, 255, 0.66);
+.settings-release-notes-content {
+  min-height: 0;
   font-size: 11px;
-  line-height: 1.45;
 }
 
 .settings-current-version-card .settings-release-notes {
@@ -869,9 +864,7 @@
   min-height: 0;
 }
 
-.settings-current-version-card .settings-release-notes-list {
-  align-content: start;
-  gap: 6px;
+.settings-current-version-card .settings-release-notes-content {
   min-height: 0;
   padding-right: 8px;
   font-size: 12px;
@@ -926,8 +919,7 @@
   font-size: 15px;
 }
 
-.settings-release-modal .settings-release-notes-list {
-  padding-left: 16px;
+.settings-release-modal .settings-release-notes-content {
   font-size: 13px;
 }
 

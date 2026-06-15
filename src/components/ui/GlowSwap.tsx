@@ -6,6 +6,7 @@ interface GlowSwapProps {
   children: ReactNode
   className?: string
   as?: 'div' | 'span'
+  intensity?: 'default' | 'soft'
 }
 
 const GLOW_SWAP_EASE = [0.22, 1, 0.36, 1] as const
@@ -15,6 +16,7 @@ export function GlowSwap({
   children,
   className,
   as = 'div',
+  intensity = 'default',
 }: GlowSwapProps) {
   const shouldReduceMotion = Boolean(useReducedMotion())
   const Component = as === 'span' ? motion.span : motion.div
@@ -25,7 +27,30 @@ export function GlowSwap({
         exit: { opacity: 0 },
         transition: { duration: 0.08 },
       }
-    : {
+    : intensity === 'soft'
+      ? {
+          initial: {
+            opacity: 0,
+            y: 2,
+            scale: 0.99,
+          },
+          animate: {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+          },
+          exit: {
+            opacity: 0,
+            y: -2,
+            scale: 0.99,
+          },
+          transition: {
+            duration: 0.18,
+            ease: GLOW_SWAP_EASE,
+            opacity: { duration: 0.14 },
+          },
+        }
+      : {
         initial: {
           opacity: 0,
           scale: 0.975,
@@ -46,7 +71,7 @@ export function GlowSwap({
           ease: GLOW_SWAP_EASE,
           opacity: { duration: 0.18 },
         },
-      }
+        }
 
   return (
     <AnimatePresence initial={false} mode="wait">
