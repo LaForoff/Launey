@@ -8,6 +8,11 @@ import Combine
 
 @MainActor
 final class ServerManager: ObservableObject {
+    enum RuntimeMode {
+        case dev
+        case production
+    }
+
     enum Status {
         case running
         case starting
@@ -42,6 +47,7 @@ final class ServerManager: ObservableObject {
     }
 
     static let shared = ServerManager()
+    static let runtimeMode: RuntimeMode = .production
 
     private let launchCommand = """
     cd /Users/neketosa/Launey/launey-web && npm run dev
@@ -50,6 +56,7 @@ final class ServerManager: ObservableObject {
     private let maximumAttempts = 60
 
     private var serverProcess: Process?
+    private var productionServer: ProductionWebServer?
     private var startupTask: Task<Bool, Never>?
     private var standardOutputPipe: Pipe?
     private var standardErrorPipe: Pipe?
@@ -116,8 +123,17 @@ final class ServerManager: ObservableObject {
     }
 
     private func startServer() -> Bool {
+        switch Self.runtimeMode {
+        case .dev:
+            return startDevServer()
+        case .production:
+            return startProductionServer()
+        }
+    }
+
+    private func startDevServer() -> Bool {
         if serverProcess?.isRunning == true {
-            print("[Launey] Server process is already running; waiting for port 4242")
+            print("[Launey] Dev server process is already running; waiting for port 4242")
             return true
         }
 
@@ -144,6 +160,25 @@ final class ServerManager: ObservableObject {
             outputPipe.fileHandleForReading.readabilityHandler = nil
             errorPipe.fileHandleForReading.readabilityHandler = nil
             print("[Launey] Failed to launch server: \(error.localizedDescription)")
+            print("[Launey] Launch error details: \(String(reflecting: error))")
+            return false
+        }
+    }
+
+    private func startProductionServer() -> Bool {
+        if productionServer != nil {
+            print("[Launey] Production server is already running; waiting for port 4242")
+            return true
+        }
+
+        let server = ProductionWebServer(port: 4242)
+
+        do {
+            try server.start()
+            productionServer = server
+            return true
+        } catch {
+            print("[Launey] Failed to start production server: \(error.localizedDescription)")
             print("[Launey] Launch error details: \(String(reflecting: error))")
             return false
         }
