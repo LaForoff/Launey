@@ -137,6 +137,8 @@ final class ProductionWebServer {
                 switch request.method {
                 case "POST":
                     return makeUploadIconResponse(body: request.body, headers: request.headers)
+                case "DELETE":
+                    return makeDeleteIconResponse(body: request.body)
                 default:
                     return makeJSONResponse(
                         status: 501,
@@ -253,6 +255,51 @@ final class ProductionWebServer {
                 status: 500,
                 reason: "Internal Server Error",
                 body: ["error": "Failed to save icon"]
+            )
+        }
+    }
+
+    private func makeDeleteIconResponse(body: Data) -> Data {
+        do {
+            let requestedPath = try parseDeleteIconPath(from: body)
+            let directoryURL = try resolveUserIconsDirectory()
+
+            guard let fileURL = resolveRuntimeFileURL(
+                requestedPath: requestedPath,
+                urlPrefix: "/user-icons/",
+                directoryURL: directoryURL
+            ) else {
+                if isPotentiallyValidRuntimePath(requestedPath, urlPrefix: "/user-icons/") {
+                    return makeTextResponse(status: 404, reason: "Not Found", body: "Not Found")
+                }
+
+                return makeJSONResponse(
+                    status: 400,
+                    reason: "Bad Request",
+                    body: ["error": "Invalid icon path"]
+                )
+            }
+
+            do {
+                try FileManager.default.removeItem(at: fileURL)
+                return makeJSONObjectResponse(
+                    status: 200,
+                    reason: "OK",
+                    object: ["ok": true]
+                )
+            } catch {
+                print("[ProductionServer] Failed to delete icon: \(error)")
+                return makeJSONResponse(
+                    status: 500,
+                    reason: "Internal Server Error",
+                    body: ["error": "Failed to delete icon"]
+                )
+            }
+        } catch {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid icon path"]
             )
         }
     }
@@ -417,7 +464,11 @@ final class ProductionWebServer {
     }
 
     private func makeJSONResponse(status: Int, reason: String, body: [String: String]) -> Data {
-        let payload = (try? JSONSerialization.data(withJSONObject: body, options: [.prettyPrinted])) ?? Data()
+        makeJSONObjectResponse(status: status, reason: reason, object: body)
+    }
+
+    private func makeJSONObjectResponse(status: Int, reason: String, object: Any) -> Data {
+        let payload = (try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted])) ?? Data()
         return makeResponse(
             status: status,
             reason: reason,
@@ -596,6 +647,32 @@ final class ProductionWebServer {
         urlPrefix: String,
         directoryURL: URL
     ) -> URL? {
+        guard let relativePath = validatedRuntimeRelativePath(
+            requestedPath: requestedPath,
+            urlPrefix: urlPrefix
+        ) else {
+            return nil
+        }
+
+        let candidateURL = directoryURL.appendingPathComponent(relativePath)
+        let standardizedDirectory = directoryURL.standardizedFileURL.path
+        let standardizedCandidate = candidateURL.standardizedFileURL.path
+
+        guard standardizedCandidate.hasPrefix(standardizedDirectory + "/") else {
+            return nil
+        }
+
+        return fileExists(at: candidateURL) ? candidateURL : nil
+    }
+
+    private func isPotentiallyValidRuntimePath(_ requestedPath: String, urlPrefix: String) -> Bool {
+        validatedRuntimeRelativePath(requestedPath: requestedPath, urlPrefix: urlPrefix) != nil
+    }
+
+    private func validatedRuntimeRelativePath(
+        requestedPath: String,
+        urlPrefix: String
+    ) -> String? {
         guard requestedPath.hasPrefix(urlPrefix) else {
             return nil
         }
@@ -609,15 +686,23 @@ final class ProductionWebServer {
             return nil
         }
 
-        let candidateURL = directoryURL.appendingPathComponent(relativePath)
-        let standardizedDirectory = directoryURL.standardizedFileURL.path
-        let standardizedCandidate = candidateURL.standardizedFileURL.path
+        return relativePath
+    }
 
-        guard standardizedCandidate.hasPrefix(standardizedDirectory + "/") else {
-            return nil
+    private func parseDeleteIconPath(from body: Data) throws -> String {
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: body)
+        } catch {
+            throw SettingsError.invalidJSON
         }
 
-        return fileExists(at: candidateURL) ? candidateURL : nil
+        guard let payload = object as? [String: Any],
+              let path = payload["path"] as? String else {
+            throw SettingsError.invalidPayload
+        }
+
+        return path
     }
 
     private func resolveIconExtension(
