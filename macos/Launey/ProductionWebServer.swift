@@ -14,9 +14,17 @@ final class ProductionWebServer {
         let checkUpdatesOnOpen: Bool
         let weatherLocation: String
         let background: Background
+        let syncMeta: SyncMeta
 
         struct Background: Codable {
             let type: String
+            let value: String?
+            let fileName: String?
+        }
+
+        struct SyncMeta: Codable {
+            let lastExportAt: String?
+            let lastImportAt: String?
         }
 
         static let `default` = AppSettings(
@@ -24,9 +32,16 @@ final class ProductionWebServer {
             backgroundBlur: 0,
             backgroundDim: 0,
             checkUpdatesOnOpen: true,
-            weatherLocation: "Russia, Moscow",
-            background: Background(type: "default")
+            weatherLocation: "",
+            background: Background(type: "default", value: nil, fileName: nil),
+            syncMeta: SyncMeta(lastExportAt: nil, lastImportAt: nil)
         )
+    }
+
+    private struct HTTPRequest {
+        let method: String
+        let path: String
+        let body: Data
     }
 
     private let port: UInt16
@@ -60,7 +75,7 @@ final class ProductionWebServer {
 
     private func handleConnection(_ connection: NWConnection, webRoot: URL) {
         connection.start(queue: queue)
-        receiveRequest(on: connection) { [weak self] requestData in
+        receiveRequest(on: connection, accumulated: Data()) { [weak self] requestData in
             guard let self else {
                 connection.cancel()
                 return
@@ -73,48 +88,68 @@ final class ProductionWebServer {
         }
     }
 
-    private func receiveRequest(on connection: NWConnection, completion: @escaping (Data) -> Void) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { data, _, _, _ in
-            completion(data ?? Data())
+    private func receiveRequest(
+        on connection: NWConnection,
+        accumulated: Data,
+        completion: @escaping (Data) -> Void
+    ) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 256 * 1024) { data, _, isComplete, error in
+            if error != nil {
+                completion(accumulated)
+                return
+            }
+
+            var nextData = accumulated
+            if let data {
+                nextData.append(data)
+            }
+
+            if isComplete || data?.isEmpty != false {
+                completion(nextData)
+                return
+            }
+
+            self.receiveRequest(on: connection, accumulated: nextData, completion: completion)
         }
     }
 
     private func buildResponse(for requestData: Data, webRoot: URL) -> Data {
-        guard let request = String(data: requestData, encoding: .utf8),
-              let requestLine = request.split(separator: "\r\n", maxSplits: 1).first
-        else {
+        guard let request = parseRequest(from: requestData) else {
             return makeTextResponse(status: 400, reason: "Bad Request", body: "Bad Request")
         }
 
-        let parts = requestLine.split(separator: " ", omittingEmptySubsequences: true)
-        guard parts.count >= 2 else {
-            return makeTextResponse(status: 400, reason: "Bad Request", body: "Bad Request")
-        }
-
-        let method = String(parts[0])
-        let rawPath = String(parts[1])
-
-        guard method == "GET" else {
-            return makeJSONResponse(
-                status: 405,
-                reason: "Method Not Allowed",
-                body: ["error": "Method Not Allowed"]
-            )
-        }
-
-        guard let requestedPath = sanitizePath(rawPath) else {
+        guard let requestedPath = sanitizePath(request.path) else {
             return makeTextResponse(status: 400, reason: "Bad Request", body: "Bad Request")
         }
 
         if requestedPath.hasPrefix("/api/") {
             if requestedPath == "/api/settings" {
-                return makeSettingsResponse()
+                switch request.method {
+                case "GET":
+                    return makeSettingsResponse()
+                case "POST":
+                    return makeSaveSettingsResponse(body: request.body)
+                default:
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
             }
 
             return makeJSONResponse(
                 status: 501,
                 reason: "Not Implemented",
                 body: ["error": "Production API is not implemented yet"]
+            )
+        }
+
+        guard request.method == "GET" else {
+            return makeJSONResponse(
+                status: 405,
+                reason: "Method Not Allowed",
+                body: ["error": "Method Not Allowed"]
             )
         }
 
@@ -147,6 +182,66 @@ final class ProductionWebServer {
                 body: ["error": "Failed to load settings"]
             )
         }
+    }
+
+    private func makeSaveSettingsResponse(body: Data) -> Data {
+        do {
+            let settings = try sanitizeSettings(from: body)
+            let settingsURL = try resolveSettingsFileURL()
+            try writeSettings(settings, to: settingsURL)
+
+            let payload = try JSONEncoder().encode(settings)
+            return makeResponse(
+                status: 200,
+                reason: "OK",
+                headers: [
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Content-Length": "\(payload.count)",
+                    "Cache-Control": "no-cache",
+                ],
+                body: payload
+            )
+        } catch let error as SettingsError {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": error.localizedDescription]
+            )
+        } catch {
+            print("[ProductionServer] Failed to save settings: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to save settings"]
+            )
+        }
+    }
+
+    private func parseRequest(from data: Data) -> HTTPRequest? {
+        guard let separatorRange = data.range(of: Data("\r\n\r\n".utf8)) else {
+            return nil
+        }
+
+        let headerData = data[..<separatorRange.lowerBound]
+        let bodyStart = separatorRange.upperBound
+        let body = bodyStart < data.endIndex ? Data(data[bodyStart...]) : Data()
+
+        guard let headerString = String(data: headerData, encoding: .utf8),
+              let requestLine = headerString.split(separator: "\r\n", maxSplits: 1).first
+        else {
+            return nil
+        }
+
+        let parts = requestLine.split(separator: " ", omittingEmptySubsequences: true)
+        guard parts.count >= 2 else {
+            return nil
+        }
+
+        return HTTPRequest(
+            method: String(parts[0]),
+            path: String(parts[1]),
+            body: body
+        )
     }
 
     private func resolveStaticFile(for requestedPath: String, webRoot: URL) -> URL? {
@@ -248,8 +343,7 @@ final class ProductionWebServer {
 
     private func loadSettings() throws -> AppSettings {
         let fileManager = FileManager.default
-        let dataDirectory = try resolveSettingsDirectory()
-        let settingsURL = dataDirectory.appendingPathComponent("settings.json")
+        let settingsURL = try resolveSettingsFileURL()
 
         if !fileManager.fileExists(atPath: settingsURL.path) {
             try writeDefaultSettings(to: settingsURL)
@@ -258,7 +352,8 @@ final class ProductionWebServer {
 
         do {
             let data = try Data(contentsOf: settingsURL)
-            let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+            let settings = try sanitizeSettings(from: data)
+            try writeSettings(settings, to: settingsURL)
             return settings
         } catch {
             print("[ProductionServer] Settings file is invalid, restoring defaults at \(settingsURL.path)")
@@ -291,8 +386,16 @@ final class ProductionWebServer {
         return dataDirectory
     }
 
+    private func resolveSettingsFileURL() throws -> URL {
+        try resolveSettingsDirectory().appendingPathComponent("settings.json")
+    }
+
     private func writeDefaultSettings(to settingsURL: URL) throws {
-        let payload = try JSONEncoder().encode(AppSettings.default)
+        try writeSettings(.default, to: settingsURL)
+    }
+
+    private func writeSettings(_ settings: AppSettings, to settingsURL: URL) throws {
+        let payload = try JSONEncoder().encode(settings)
         try payload.write(to: settingsURL, options: .atomic)
     }
 
@@ -312,6 +415,145 @@ final class ProductionWebServer {
         }
 
         return path
+    }
+
+    private enum SettingsError: LocalizedError {
+        case invalidJSON
+        case invalidPayload
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidJSON:
+                return "Invalid JSON body"
+            case .invalidPayload:
+                return "Invalid settings payload"
+            }
+        }
+    }
+
+    private func sanitizeSettings(from data: Data) throws -> AppSettings {
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            throw SettingsError.invalidJSON
+        }
+
+        guard let payload = object as? [String: Any] else {
+            throw SettingsError.invalidPayload
+        }
+
+        let rawWeatherLocation = (payload["weatherLocation"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedWeatherLocation: String
+        if let rawWeatherLocation, !rawWeatherLocation.isEmpty {
+            normalizedWeatherLocation = rawWeatherLocation.caseInsensitiveCompare("Russia, Moscow") == .orderedSame
+                ? ""
+                : rawWeatherLocation
+        } else {
+            normalizedWeatherLocation = AppSettings.default.weatherLocation
+        }
+
+        return AppSettings(
+            appearanceTheme: sanitizeAppearanceTheme(payload["appearanceTheme"]),
+            backgroundBlur: clampSetting(payload["backgroundBlur"]),
+            backgroundDim: clampSetting(payload["backgroundDim"]),
+            checkUpdatesOnOpen: sanitizeCheckUpdatesOnOpen(payload["checkUpdatesOnOpen"]),
+            weatherLocation: normalizedWeatherLocation,
+            background: sanitizeBackground(payload["background"]),
+            syncMeta: sanitizeSyncMeta(payload["syncMeta"])
+        )
+    }
+
+    private func sanitizeAppearanceTheme(_ value: Any?) -> String {
+        guard let value = value as? String else {
+            return AppSettings.default.appearanceTheme
+        }
+
+        switch value {
+        case "light", "dark", "system":
+            return value
+        default:
+            return AppSettings.default.appearanceTheme
+        }
+    }
+
+    private func clampSetting(_ value: Any?) -> Int {
+        let number: Double?
+        if let value = value as? NSNumber {
+            number = value.doubleValue
+        } else {
+            number = nil
+        }
+
+        guard let number, !number.isNaN else {
+            return 0
+        }
+
+        return max(0, min(100, Int(number.rounded())))
+    }
+
+    private func sanitizeCheckUpdatesOnOpen(_ value: Any?) -> Bool {
+        (value as? Bool) ?? AppSettings.default.checkUpdatesOnOpen
+    }
+
+    private func sanitizeBackground(_ value: Any?) -> AppSettings.Background {
+        guard let payload = value as? [String: Any] else {
+            return AppSettings.default.background
+        }
+
+        let type = (payload["type"] as? String) ?? "default"
+        let backgroundValue = (payload["value"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if type == "default" {
+            return AppSettings.Background(type: "default", value: nil, fileName: nil)
+        }
+
+        let supportedTypes = ["image-url", "video-url", "local-image", "local-video"]
+        guard supportedTypes.contains(type), !backgroundValue.isEmpty else {
+            return AppSettings.default.background
+        }
+
+        if type == "local-image" || type == "local-video" {
+            let fileName = (payload["fileName"] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return AppSettings.Background(
+                type: type,
+                value: backgroundValue,
+                fileName: (fileName?.isEmpty == false) ? fileName : nil
+            )
+        }
+
+        return AppSettings.Background(type: type, value: backgroundValue, fileName: nil)
+    }
+
+    private func sanitizeSyncMeta(_ value: Any?) -> AppSettings.SyncMeta {
+        guard let payload = value as? [String: Any] else {
+            return AppSettings.default.syncMeta
+        }
+
+        return AppSettings.SyncMeta(
+            lastExportAt: sanitizeISODate(payload["lastExportAt"]),
+            lastImportAt: sanitizeISODate(payload["lastImportAt"])
+        )
+    }
+
+    private func sanitizeISODate(_ value: Any?) -> String? {
+        guard let stringValue = value as? String else {
+            return nil
+        }
+
+        let trimmed = stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+
+        let parsed = ISO8601DateFormatter().date(from: trimmed) ?? DateFormatter.launeyFallback.date(from: trimmed)
+        guard let parsed else {
+            return nil
+        }
+
+        return ISO8601DateFormatter().string(from: parsed)
     }
 
     private func mimeType(for pathExtension: String) -> String {
@@ -338,4 +580,13 @@ final class ProductionWebServer {
             return "application/octet-stream"
         }
     }
+}
+
+private extension DateFormatter {
+    static let launeyFallback: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
+        return formatter
+    }()
 }
