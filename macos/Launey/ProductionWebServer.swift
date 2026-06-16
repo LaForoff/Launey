@@ -7,6 +7,15 @@ import Foundation
 import Network
 
 final class ProductionWebServer {
+    private static let allowedIconExtensions: Set<String> = [
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "svg",
+        "ico",
+    ]
+
     private struct AppSettings: Codable {
         let appearanceTheme: String
         let backgroundBlur: Int
@@ -41,6 +50,7 @@ final class ProductionWebServer {
     private struct HTTPRequest {
         let method: String
         let path: String
+        let headers: [String: String]
         let body: Data
     }
 
@@ -123,6 +133,19 @@ final class ProductionWebServer {
         }
 
         if requestedPath.hasPrefix("/api/") {
+            if requestedPath == "/api/icons" {
+                switch request.method {
+                case "POST":
+                    return makeUploadIconResponse(body: request.body, headers: request.headers)
+                default:
+                    return makeJSONResponse(
+                        status: 501,
+                        reason: "Not Implemented",
+                        body: ["error": "Production API is not implemented yet"]
+                    )
+                }
+            }
+
             if requestedPath == "/api/settings" {
                 switch request.method {
                 case "GET":
@@ -190,6 +213,48 @@ final class ProductionWebServer {
         }
 
         return makeTextResponse(status: 404, reason: "Not Found", body: "Not Found")
+    }
+
+    private func makeUploadIconResponse(body: Data, headers: [String: String]) -> Data {
+        guard !body.isEmpty else {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Empty file"]
+            )
+        }
+
+        guard let extensionName = resolveIconExtension(
+            fileNameHeader: headers["x-file-name"],
+            contentTypeHeader: headers["content-type"]
+        ) else {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Unsupported icon type"]
+            )
+        }
+
+        let fileName = "icon-\(UUID().uuidString.lowercased()).\(extensionName)"
+
+        do {
+            let directoryURL = try resolveUserIconsDirectory()
+            let fileURL = directoryURL.appendingPathComponent(fileName)
+            try body.write(to: fileURL, options: .atomic)
+
+            return makeJSONResponse(
+                status: 200,
+                reason: "OK",
+                body: ["path": "/user-icons/\(fileName)"]
+            )
+        } catch {
+            print("[ProductionServer] Failed to save icon: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to save icon"]
+            )
+        }
     }
 
     private func makeSettingsResponse() -> Data {
@@ -295,9 +360,25 @@ final class ProductionWebServer {
             return nil
         }
 
+        var headers: [String: String] = [:]
+        let headerLines = headerString.split(separator: "\r\n", omittingEmptySubsequences: false).dropFirst()
+        for line in headerLines {
+            guard let separatorIndex = line.firstIndex(of: ":") else {
+                continue
+            }
+
+            let name = line[..<separatorIndex]
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            let value = line[line.index(after: separatorIndex)...]
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            headers[name] = value
+        }
+
         return HTTPRequest(
             method: String(parts[0]),
             path: String(parts[1]),
+            headers: headers,
             body: body
         )
     }
@@ -537,6 +618,44 @@ final class ProductionWebServer {
         }
 
         return fileExists(at: candidateURL) ? candidateURL : nil
+    }
+
+    private func resolveIconExtension(
+        fileNameHeader: String?,
+        contentTypeHeader: String?
+    ) -> String? {
+        if let fileNameHeader,
+           let decodedName = fileNameHeader.removingPercentEncoding {
+            let fileExtension = URL(fileURLWithPath: decodedName).pathExtension.lowercased()
+            if Self.allowedIconExtensions.contains(fileExtension) {
+                return fileExtension
+            }
+        }
+
+        guard let contentTypeHeader else {
+            return nil
+        }
+
+        let contentType = contentTypeHeader
+            .split(separator: ";", maxSplits: 1)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch contentType {
+        case "image/png":
+            return "png"
+        case "image/jpeg":
+            return "jpg"
+        case "image/webp":
+            return "webp"
+        case "image/svg+xml":
+            return "svg"
+        case "image/x-icon", "image/vnd.microsoft.icon":
+            return "ico"
+        default:
+            return nil
+        }
     }
 
     private enum SettingsError: LocalizedError {
