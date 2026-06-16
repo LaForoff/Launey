@@ -7,6 +7,28 @@ import Foundation
 import Network
 
 final class ProductionWebServer {
+    private struct AppSettings: Codable {
+        let appearanceTheme: String
+        let backgroundBlur: Int
+        let backgroundDim: Int
+        let checkUpdatesOnOpen: Bool
+        let weatherLocation: String
+        let background: Background
+
+        struct Background: Codable {
+            let type: String
+        }
+
+        static let `default` = AppSettings(
+            appearanceTheme: "system",
+            backgroundBlur: 0,
+            backgroundDim: 0,
+            checkUpdatesOnOpen: true,
+            weatherLocation: "Russia, Moscow",
+            background: Background(type: "default")
+        )
+    }
+
     private let port: UInt16
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "designby4roff.launey.production-server")
@@ -85,6 +107,10 @@ final class ProductionWebServer {
         }
 
         if requestedPath.hasPrefix("/api/") {
+            if requestedPath == "/api/settings" {
+                return makeSettingsResponse()
+            }
+
             return makeJSONResponse(
                 status: 501,
                 reason: "Not Implemented",
@@ -97,6 +123,30 @@ final class ProductionWebServer {
         }
 
         return makeTextResponse(status: 404, reason: "Not Found", body: "Not Found")
+    }
+
+    private func makeSettingsResponse() -> Data {
+        do {
+            let settings = try loadSettings()
+            let payload = try JSONEncoder().encode(settings)
+            return makeResponse(
+                status: 200,
+                reason: "OK",
+                headers: [
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Content-Length": "\(payload.count)",
+                    "Cache-Control": "no-cache",
+                ],
+                body: payload
+            )
+        } catch {
+            print("[ProductionServer] Failed to load settings: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to load settings"]
+            )
+        }
     }
 
     private func resolveStaticFile(for requestedPath: String, webRoot: URL) -> URL? {
@@ -194,6 +244,56 @@ final class ProductionWebServer {
                 NSLocalizedDescriptionKey: "Missing production web root at Resources/web and fallback dist path."
             ]
         )
+    }
+
+    private func loadSettings() throws -> AppSettings {
+        let fileManager = FileManager.default
+        let dataDirectory = try resolveSettingsDirectory()
+        let settingsURL = dataDirectory.appendingPathComponent("settings.json")
+
+        if !fileManager.fileExists(atPath: settingsURL.path) {
+            try writeDefaultSettings(to: settingsURL)
+            return .default
+        }
+
+        do {
+            let data = try Data(contentsOf: settingsURL)
+            let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+            return settings
+        } catch {
+            print("[ProductionServer] Settings file is invalid, restoring defaults at \(settingsURL.path)")
+            try writeDefaultSettings(to: settingsURL)
+            return .default
+        }
+    }
+
+    private func resolveSettingsDirectory() throws -> URL {
+        guard let applicationSupportURL = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else {
+            throw NSError(
+                domain: "Launey.ProductionWebServer",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Unable to resolve Application Support directory."]
+            )
+        }
+
+        let dataDirectory = applicationSupportURL
+            .appendingPathComponent("Launey", isDirectory: true)
+            .appendingPathComponent("data", isDirectory: true)
+
+        try FileManager.default.createDirectory(
+            at: dataDirectory,
+            withIntermediateDirectories: true
+        )
+
+        return dataDirectory
+    }
+
+    private func writeDefaultSettings(to settingsURL: URL) throws {
+        let payload = try JSONEncoder().encode(AppSettings.default)
+        try payload.write(to: settingsURL, options: .atomic)
     }
 
     private func fileExists(at url: URL) -> Bool {
