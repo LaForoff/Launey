@@ -145,6 +145,38 @@ final class ProductionWebServer {
             )
         }
 
+        if requestedPath.hasPrefix("/user-icons/") {
+            guard request.method == "GET" else {
+                return makeJSONResponse(
+                    status: 405,
+                    reason: "Method Not Allowed",
+                    body: ["error": "Method Not Allowed"]
+                )
+            }
+
+            return makeRuntimeFileResponse(
+                requestedPath: requestedPath,
+                urlPrefix: "/user-icons/",
+                directoryResolver: resolveUserIconsDirectory
+            )
+        }
+
+        if requestedPath.hasPrefix("/icon-cache/") {
+            guard request.method == "GET" else {
+                return makeJSONResponse(
+                    status: 405,
+                    reason: "Method Not Allowed",
+                    body: ["error": "Method Not Allowed"]
+                )
+            }
+
+            return makeRuntimeFileResponse(
+                requestedPath: requestedPath,
+                urlPrefix: "/icon-cache/",
+                directoryResolver: resolveIconCacheDirectory
+            )
+        }
+
         guard request.method == "GET" else {
             return makeJSONResponse(
                 status: 405,
@@ -213,6 +245,32 @@ final class ProductionWebServer {
                 status: 500,
                 reason: "Internal Server Error",
                 body: ["error": "Failed to save settings"]
+            )
+        }
+    }
+
+    private func makeRuntimeFileResponse(
+        requestedPath: String,
+        urlPrefix: String,
+        directoryResolver: () throws -> URL
+    ) -> Data {
+        do {
+            let directoryURL = try directoryResolver()
+            guard let fileURL = resolveRuntimeFileURL(
+                requestedPath: requestedPath,
+                urlPrefix: urlPrefix,
+                directoryURL: directoryURL
+            ) else {
+                return makeTextResponse(status: 404, reason: "Not Found", body: "Not Found")
+            }
+
+            return makeFileResponse(fileURL: fileURL)
+        } catch {
+            print("[ProductionServer] Failed to serve runtime file: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to read runtime file"]
             )
         }
     }
@@ -363,19 +421,7 @@ final class ProductionWebServer {
     }
 
     private func resolveSettingsDirectory() throws -> URL {
-        guard let applicationSupportURL = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first else {
-            throw NSError(
-                domain: "Launey.ProductionWebServer",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Unable to resolve Application Support directory."]
-            )
-        }
-
-        let dataDirectory = applicationSupportURL
-            .appendingPathComponent("Launey", isDirectory: true)
+        let dataDirectory = try resolveLauneyApplicationSupportDirectory()
             .appendingPathComponent("data", isDirectory: true)
 
         try FileManager.default.createDirectory(
@@ -388,6 +434,53 @@ final class ProductionWebServer {
 
     private func resolveSettingsFileURL() throws -> URL {
         try resolveSettingsDirectory().appendingPathComponent("settings.json")
+    }
+
+    private func resolveUserIconsDirectory() throws -> URL {
+        let directory = try resolveLauneyApplicationSupportDirectory()
+            .appendingPathComponent("user-icons", isDirectory: true)
+
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+
+        return directory
+    }
+
+    private func resolveIconCacheDirectory() throws -> URL {
+        let directory = try resolveLauneyApplicationSupportDirectory()
+            .appendingPathComponent("icon-cache", isDirectory: true)
+
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+
+        return directory
+    }
+
+    private func resolveLauneyApplicationSupportDirectory() throws -> URL {
+        guard let applicationSupportURL = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else {
+            throw NSError(
+                domain: "Launey.ProductionWebServer",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Unable to resolve Application Support directory."]
+            )
+        }
+
+        let directory = applicationSupportURL
+            .appendingPathComponent("Launey", isDirectory: true)
+
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+
+        return directory
     }
 
     private func writeDefaultSettings(to settingsURL: URL) throws {
@@ -415,6 +508,35 @@ final class ProductionWebServer {
         }
 
         return path
+    }
+
+    private func resolveRuntimeFileURL(
+        requestedPath: String,
+        urlPrefix: String,
+        directoryURL: URL
+    ) -> URL? {
+        guard requestedPath.hasPrefix(urlPrefix) else {
+            return nil
+        }
+
+        let relativePath = String(requestedPath.dropFirst(urlPrefix.count))
+        guard !relativePath.isEmpty else {
+            return nil
+        }
+
+        if relativePath.hasPrefix("/") || relativePath.contains("..") || relativePath.contains("\\") {
+            return nil
+        }
+
+        let candidateURL = directoryURL.appendingPathComponent(relativePath)
+        let standardizedDirectory = directoryURL.standardizedFileURL.path
+        let standardizedCandidate = candidateURL.standardizedFileURL.path
+
+        guard standardizedCandidate.hasPrefix(standardizedDirectory + "/") else {
+            return nil
+        }
+
+        return fileExists(at: candidateURL) ? candidateURL : nil
     }
 
     private enum SettingsError: LocalizedError {
