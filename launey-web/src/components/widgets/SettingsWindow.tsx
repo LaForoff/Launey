@@ -353,7 +353,10 @@ function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }
       setIsImporting(true)
       await onImport(pendingFile)
       setPendingFile(null)
-      onNotifySuccess('Данные Launey импортированы')
+      onNotifySuccess('Импорт завершён. Обновляем Launey...')
+      window.setTimeout(() => {
+        window.location.reload()
+      }, 400)
     } catch {
       onNotify('error', 'Не удалось выполнить импорт')
     } finally {
