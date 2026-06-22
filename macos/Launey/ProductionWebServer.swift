@@ -54,6 +54,30 @@ final class ProductionWebServer {
         let body: Data
     }
 
+    private final class DownloadResultBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var result: Result<(Data, URLResponse), Error>?
+
+        func store(_ result: Result<(Data, URLResponse), Error>) {
+            lock.lock()
+            self.result = result
+            lock.unlock()
+        }
+
+        func load() -> Result<(Data, URLResponse), Error>? {
+            lock.lock()
+            defer { lock.unlock() }
+            return result
+        }
+    }
+
+    private enum IconCacheError: Error {
+        case invalidJSON
+        case invalidPayload
+        case unsupportedType
+        case downloadFailed
+    }
+
     private let port: UInt16
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "designby4roff.launey.production-server")
@@ -114,7 +138,7 @@ final class ProductionWebServer {
                 nextData.append(data)
             }
 
-            if isComplete || data?.isEmpty != false {
+            if isComplete || self.isCompleteHTTPRequest(nextData) || data?.isEmpty != false {
                 completion(nextData)
                 return
             }
@@ -133,6 +157,40 @@ final class ProductionWebServer {
         }
 
         if requestedPath.hasPrefix("/api/") {
+            if requestedPath == "/api/cache-icon" {
+                guard request.method == "POST" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeCacheIconResponse(
+                    body: request.body,
+                    requestKey: "iconUrl",
+                    responseKey: "localIcon",
+                    includeOK: true
+                )
+            }
+
+            if requestedPath == "/api/icons/cache-remote" {
+                guard request.method == "POST" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeCacheIconResponse(
+                    body: request.body,
+                    requestKey: "url",
+                    responseKey: "path",
+                    includeOK: false
+                )
+            }
+
             if requestedPath == "/api/icons" {
                 switch request.method {
                 case "POST":
@@ -215,6 +273,50 @@ final class ProductionWebServer {
         }
 
         return makeTextResponse(status: 404, reason: "Not Found", body: "Not Found")
+    }
+
+    private func makeCacheIconResponse(
+        body: Data,
+        requestKey: String,
+        responseKey: String,
+        includeOK: Bool
+    ) -> Data {
+        do {
+            let source = try parseIconSource(from: body, key: requestKey)
+            let cachedPath = try cacheIcon(from: source)
+
+            var response: [String: Any] = [responseKey: cachedPath]
+            if includeOK {
+                response["ok"] = true
+            }
+
+            return makeJSONObjectResponse(status: 200, reason: "OK", object: response)
+        } catch IconCacheError.invalidJSON {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid JSON body"]
+            )
+        } catch IconCacheError.invalidPayload {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid icon URL"]
+            )
+        } catch IconCacheError.unsupportedType {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Unsupported icon type"]
+            )
+        } catch {
+            print("[ProductionServer] Failed to cache icon: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to cache icon"]
+            )
+        }
     }
 
     private func makeUploadIconResponse(body: Data, headers: [String: String]) -> Data {
@@ -428,6 +530,30 @@ final class ProductionWebServer {
             headers: headers,
             body: body
         )
+    }
+
+    private func isCompleteHTTPRequest(_ data: Data) -> Bool {
+        let separator = Data("\r\n\r\n".utf8)
+        guard let separatorRange = data.range(of: separator) else {
+            return false
+        }
+
+        let headerData = data[..<separatorRange.lowerBound]
+        guard let headerString = String(data: headerData, encoding: .utf8) else {
+            return false
+        }
+
+        let contentLength = headerString
+            .split(separator: "\r\n")
+            .first { $0.lowercased().hasPrefix("content-length:") }
+            .flatMap { line -> Int? in
+                guard let separatorIndex = line.firstIndex(of: ":") else {
+                    return nil
+                }
+                return Int(line[line.index(after: separatorIndex)...].trimmingCharacters(in: .whitespaces))
+            } ?? 0
+
+        return data.count >= separatorRange.upperBound + contentLength
     }
 
     private func resolveStaticFile(for requestedPath: String, webRoot: URL) -> URL? {
@@ -705,6 +831,115 @@ final class ProductionWebServer {
         return path
     }
 
+    private func parseIconSource(from body: Data, key: String) throws -> String {
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: body)
+        } catch {
+            throw IconCacheError.invalidJSON
+        }
+
+        guard let payload = object as? [String: Any],
+              let source = payload[key] as? String,
+              !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw IconCacheError.invalidPayload
+        }
+
+        return source.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func cacheIcon(from source: String) throws -> String {
+        let icon: (data: Data, extensionName: String)
+
+        if source.hasPrefix("data:image/") {
+            icon = try decodeDataIcon(source)
+        } else {
+            guard let url = URL(string: source),
+                  let scheme = url.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https" else {
+                throw IconCacheError.invalidPayload
+            }
+
+            icon = try downloadRemoteIcon(from: url)
+        }
+
+        let directoryURL = try resolveIconCacheDirectory()
+        let fileName = "icon-\(UUID().uuidString.lowercased()).\(icon.extensionName)"
+        let fileURL = directoryURL.appendingPathComponent(fileName)
+        try icon.data.write(to: fileURL, options: .atomic)
+        return "/icon-cache/\(fileName)"
+    }
+
+    private func decodeDataIcon(_ source: String) throws -> (data: Data, extensionName: String) {
+        guard let commaIndex = source.firstIndex(of: ",") else {
+            throw IconCacheError.invalidPayload
+        }
+
+        let metadata = String(source[..<commaIndex])
+        guard metadata.lowercased().hasSuffix(";base64") else {
+            throw IconCacheError.invalidPayload
+        }
+
+        let contentType = metadata
+            .dropFirst("data:".count)
+            .split(separator: ";", maxSplits: 1)
+            .first
+            .map(String.init)
+
+        guard let extensionName = resolveIconExtension(contentTypeHeader: contentType),
+              let data = Data(base64Encoded: String(source[source.index(after: commaIndex)...]), options: .ignoreUnknownCharacters),
+              !data.isEmpty else {
+            throw IconCacheError.unsupportedType
+        }
+
+        return (data, extensionName)
+    }
+
+    private func downloadRemoteIcon(from url: URL) throws -> (data: Data, extensionName: String) {
+        let semaphore = DispatchSemaphore(value: 0)
+        let resultBox = DownloadResultBox()
+
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            defer { semaphore.signal() }
+
+            if let error {
+                resultBox.store(.failure(error))
+                return
+            }
+
+            guard let data, let response else {
+                resultBox.store(.failure(IconCacheError.downloadFailed))
+                return
+            }
+
+            resultBox.store(.success((data, response)))
+        }
+        task.resume()
+        semaphore.wait()
+
+        guard let result = resultBox.load() else {
+            throw IconCacheError.downloadFailed
+        }
+
+        let (data, response) = try result.get()
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode),
+              !data.isEmpty else {
+            throw IconCacheError.downloadFailed
+        }
+
+        guard let finalScheme = httpResponse.url?.scheme?.lowercased(),
+              finalScheme == "http" || finalScheme == "https" else {
+            throw IconCacheError.invalidPayload
+        }
+
+        guard let extensionName = resolveIconExtension(contentTypeHeader: httpResponse.value(forHTTPHeaderField: "Content-Type")) else {
+            throw IconCacheError.unsupportedType
+        }
+
+        return (data, extensionName)
+    }
+
     private func resolveIconExtension(
         fileNameHeader: String?,
         contentTypeHeader: String?
@@ -741,6 +976,10 @@ final class ProductionWebServer {
         default:
             return nil
         }
+    }
+
+    private func resolveIconExtension(contentTypeHeader: String?) -> String? {
+        resolveIconExtension(fileNameHeader: nil, contentTypeHeader: contentTypeHeader)
     }
 
     private enum SettingsError: LocalizedError {
