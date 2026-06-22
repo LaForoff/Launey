@@ -1,73 +1,49 @@
-Launey
+# Launey
 
-A modern launcher and workspace manager for macOS.
+Современный лаунчер и менеджер рабочих пространств для macOS.
 
-Launey helps organize websites, applications and workflows into clean, customizable spaces that are always one click away from your menu bar.
+Launey помогает организовать сайты, приложения и рабочие проекты в удобные пространства, которые всегда доступны из строки меню.
 
-⚠️ Early Preview (v0.1.x)
-Launey is under active development. Features and APIs may change between releases.
+> ⚠️ Проект находится в активной разработке. Возможны изменения интерфейса и функциональности.
 
-⸻
+---
 
-Features
+## Возможности
 
-* 🚀 Native macOS menu bar application
-* 🧩 Organize links into multiple workspaces
-* 🖼️ Custom icons and backgrounds
-* 📦 Import & Export workspaces
-* 💾 Automatic local data storage
-* ⚡ Fast local runtime powered by Swift + React
-* 🌙 Light, Dark and System appearance
-* 🍎 Built specifically for macOS
+- 🚀 Нативное приложение для macOS
+- 🗂️ Несколько рабочих пространств
+- 🖼️ Пользовательские иконки и фон
+- 📦 Импорт и экспорт рабочих пространств
+- 💾 Автоматическое сохранение данных
+- ⚡ Высокая скорость работы
+- 🌙 Светлая, тёмная и системная темы
 
-⸻
+---
 
-Screenshots
+## Установка
 
-Screenshots will be added soon.
+1. Откройте раздел Releases.
+2. Скачайте последнюю версию Launey.
+3. Распакуйте архив.
+4. Переместите Launey.app в папку «Программы».
+5. Запустите приложение.
 
-⸻
+---
 
-Installation
+## Дорожная карта
 
-1. Download the latest release from GitHub Releases.
-2. Extract the archive.
-3. Move Launey.app to the Applications folder.
-4. Launch Launey.
+### Уже реализовано
 
-⸻
+- ✅ Нативное приложение
+- ✅ Локальное хранение данных
+- ✅ Импорт и экспорт
+- ✅ Пользовательские иконки
+- ✅ Автономная работа без Vite
 
-Tech Stack
+### В разработке
 
-* Swift
-* SwiftUI
-* React
-* TypeScript
-* Vite
-* Local Production Server
-
-⸻
-
-Roadmap
-
-Current
-
-* ✅ Native macOS application
-* ✅ Production runtime
-* ✅ Workspace Import / Export
-* ✅ Custom icons
-* ✅ Local storage
-
-Planned
-
-* Automatic updates
-* App Store icon search
-* Website icon discovery
-* Arc Browser import
-* More customization options
-
-⸻
-
-License
-
-This project is currently available for personal use while development continues.
+- 🔄 Автоматические обновления
+- 🔍 Поиск иконок приложений
+- 🌐 Поиск иконок сайтов
+- 🧭 Импорт из Arc Browser
+- 🎨 Новые возможности персонализации
