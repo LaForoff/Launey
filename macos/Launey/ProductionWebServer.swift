@@ -78,6 +78,21 @@ final class ProductionWebServer {
         case downloadFailed
     }
 
+    private enum ExportError: Error {
+        case invalidJSON
+        case invalidPayload
+    }
+
+    private enum ImportError: Error {
+        case invalidJSON
+        case invalidPayload
+    }
+
+    private struct RestoredIcon {
+        let fileURL: URL
+        let data: Data
+    }
+
     private let port: UInt16
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "designby4roff.launey.production-server")
@@ -157,6 +172,30 @@ final class ProductionWebServer {
         }
 
         if requestedPath.hasPrefix("/api/") {
+            if requestedPath == "/api/import" {
+                guard request.method == "POST" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeImportResponse(body: request.body)
+            }
+
+            if requestedPath == "/api/export" {
+                guard request.method == "POST" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeExportResponse(body: request.body)
+            }
+
             if requestedPath == "/api/cache-icon" {
                 guard request.method == "POST" else {
                     return makeJSONResponse(
@@ -273,6 +312,98 @@ final class ProductionWebServer {
         }
 
         return makeTextResponse(status: 404, reason: "Not Found", body: "Not Found")
+    }
+
+    private func makeImportResponse(body: Data) -> Data {
+        do {
+            let imported = try parseImport(from: body)
+
+            for icon in imported.icons {
+                try FileManager.default.createDirectory(
+                    at: icon.fileURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try icon.data.write(to: icon.fileURL, options: .atomic)
+            }
+
+            let settingsURL = try resolveSettingsFileURL()
+            try writeSettings(imported.settings, to: settingsURL)
+            let settingsJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(imported.settings))
+
+            return makeJSONObjectResponse(
+                status: 200,
+                reason: "OK",
+                object: [
+                    "ok": true,
+                    "spaces": imported.spaces,
+                    "activeSpaceId": imported.activeSpaceId,
+                    "settings": settingsJSON,
+                    "restoredIcons": imported.icons.count,
+                    "warnings": imported.warnings,
+                ]
+            )
+        } catch ImportError.invalidJSON {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid JSON body"]
+            )
+        } catch ImportError.invalidPayload {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid import payload"]
+            )
+        } catch {
+            print("[ProductionServer] Failed to import data: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to import data"]
+            )
+        }
+    }
+
+    private func makeExportResponse(body: Data) -> Data {
+        do {
+            let export = try buildExport(from: body)
+            var payload = try JSONSerialization.data(withJSONObject: export, options: [.prettyPrinted])
+            payload.append(Data("\n".utf8))
+
+            let date = DateFormatter.launeyExportDate.string(from: Date())
+            let fileName = "launey-export-\(date).launeyexport"
+
+            return makeResponse(
+                status: 200,
+                reason: "OK",
+                headers: [
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Content-Disposition": "attachment; filename=\"\(fileName)\"",
+                    "Content-Length": "\(payload.count)",
+                    "Cache-Control": "no-cache",
+                ],
+                body: payload
+            )
+        } catch ExportError.invalidJSON {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid JSON body"]
+            )
+        } catch ExportError.invalidPayload {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid export payload"]
+            )
+        } catch {
+            print("[ProductionServer] Failed to export data: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to export data"]
+            )
+        }
     }
 
     private func makeCacheIconResponse(
@@ -831,6 +962,472 @@ final class ProductionWebServer {
         return path
     }
 
+    private func buildExport(from body: Data) throws -> [String: Any] {
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: body)
+        } catch {
+            throw ExportError.invalidJSON
+        }
+
+        guard let payload = object as? [String: Any],
+              let rawSpaces = payload["spaces"] as? [Any],
+              let rawSettings = payload["settings"] as? [String: Any] else {
+            throw ExportError.invalidPayload
+        }
+
+        let settingsData = try JSONSerialization.data(withJSONObject: rawSettings)
+        let settings: AppSettings
+        do {
+            settings = try sanitizeSettings(from: settingsData)
+        } catch {
+            throw ExportError.invalidPayload
+        }
+
+        var warnings: [String] = []
+        var localIconPaths = Set<String>()
+        let spaces = sanitizeExportSpaces(
+            rawSpaces,
+            warnings: &warnings,
+            localIconPaths: &localIconPaths
+        )
+
+        let activeSpaceId = (payload["activeSpaceId"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedActiveSpaceId = activeSpaceId?.isEmpty == false
+            ? activeSpaceId!
+            : (spaces.first?["id"] as? String ?? "main")
+
+        let settingsJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(settings))
+        let iconAssets = readIconAssets(paths: localIconPaths, warnings: &warnings)
+
+        var export: [String: Any] = [
+            "version": 1,
+            "app": "Launey",
+            "exportedAt": ISO8601DateFormatter.launeyExport.string(from: Date()),
+            "settings": settingsJSON,
+            "spaces": spaces,
+            "activeSpaceId": resolvedActiveSpaceId,
+            "assets": ["icons": iconAssets],
+        ]
+
+        if !warnings.isEmpty {
+            export["warnings"] = warnings
+        }
+
+        return export
+    }
+
+    private func parseImport(from body: Data) throws -> (
+        spaces: [[String: Any]],
+        activeSpaceId: String,
+        settings: AppSettings,
+        icons: [RestoredIcon],
+        warnings: [String]
+    ) {
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: body)
+        } catch {
+            throw ImportError.invalidJSON
+        }
+
+        guard let request = object as? [String: Any],
+              let file = request["file"] as? [String: Any],
+              file["app"] as? String == "Launey",
+              file["version"] is NSNumber,
+              let rawSpaces = file["spaces"] as? [Any],
+              let activeSpaceId = file["activeSpaceId"] as? String,
+              !activeSpaceId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let rawSettings = file["settings"] as? [String: Any] else {
+            throw ImportError.invalidPayload
+        }
+
+        let settingsData: Data
+        do {
+            settingsData = try JSONSerialization.data(withJSONObject: rawSettings)
+        } catch {
+            throw ImportError.invalidPayload
+        }
+
+        let settings: AppSettings
+        do {
+            settings = try sanitizeSettings(from: settingsData)
+        } catch {
+            throw ImportError.invalidPayload
+        }
+
+        let spaces = sanitizeImportedSpaces(rawSpaces)
+        let icons = try parseImportedIcons(file["assets"])
+        let warnings = (file["warnings"] as? [Any])?
+            .compactMap { $0 as? String } ?? []
+
+        return (
+            spaces: spaces,
+            activeSpaceId: activeSpaceId,
+            settings: settings,
+            icons: icons,
+            warnings: warnings
+        )
+    }
+
+    private func sanitizeImportedSpaces(_ values: [Any]) -> [[String: Any]] {
+        values.compactMap { value in
+            guard let payload = value as? [String: Any],
+                  let id = payload["id"] as? String,
+                  let title = payload["title"] as? String,
+                  let rawItems = payload["items"] as? [Any] else {
+                return nil
+            }
+
+            let items = rawItems.compactMap(sanitizeImportedItem)
+            var space: [String: Any] = [
+                "id": id,
+                "title": title,
+                "items": items,
+            ]
+
+            if let background = payload["background"] as? [String: Any] {
+                space["background"] = background
+            }
+
+            return space
+        }
+    }
+
+    private func sanitizeImportedItem(_ value: Any) -> [String: Any]? {
+        guard let payload = value as? [String: Any],
+              let type = payload["type"] as? String,
+              let id = payload["id"] as? String,
+              let title = payload["title"] as? String else {
+            return nil
+        }
+
+        if type == "url" {
+            guard let url = payload["url"] as? String else {
+                return nil
+            }
+
+            var item: [String: Any] = [
+                "type": "url",
+                "id": id,
+                "title": title,
+                "url": url,
+                "icon": payload["icon"] as? String ?? "",
+                "addFrame": payload["addFrame"] as? Bool ?? true,
+            ]
+
+            if let customization = sanitizeIconCustomization(payload["iconCustomization"]) {
+                item["iconCustomization"] = customization
+            }
+            if let restoreOrigin = sanitizeRestoreOrigin(payload["restoreOrigin"]) {
+                item["restoreOrigin"] = restoreOrigin
+            }
+            return item
+        }
+
+        if type == "folder", let rawItems = payload["items"] as? [Any] {
+            let items = rawItems.compactMap { value -> [String: Any]? in
+                guard let item = sanitizeImportedItem(value),
+                      item["type"] as? String == "url" else {
+                    return nil
+                }
+                return item
+            }
+
+            return [
+                "type": "folder",
+                "id": id,
+                "title": title,
+                "icon": payload["icon"] as? String ?? "",
+                "items": items,
+            ]
+        }
+
+        return nil
+    }
+
+    private func parseImportedIcons(_ assetsValue: Any?) throws -> [RestoredIcon] {
+        guard let assetsValue else {
+            return []
+        }
+        guard let assets = assetsValue as? [String: Any] else {
+            throw ImportError.invalidPayload
+        }
+        guard let iconsValue = assets["icons"] else {
+            return []
+        }
+        guard let icons = iconsValue as? [String: Any] else {
+            throw ImportError.invalidPayload
+        }
+
+        return try icons.map { path, value in
+            guard let payload = value as? [String: Any],
+                  payload["mimeType"] is String,
+                  let encodedData = payload["data"] as? String,
+                  let data = Data(base64Encoded: encodedData) else {
+                throw ImportError.invalidPayload
+            }
+
+            let fileURL = try importDestinationURL(for: path)
+            return RestoredIcon(fileURL: fileURL, data: data)
+        }
+    }
+
+    private func importDestinationURL(for path: String) throws -> URL {
+        let directoryURL: URL
+        let prefix: String
+
+        if path.hasPrefix("/user-icons/") {
+            directoryURL = try resolveUserIconsDirectory()
+            prefix = "/user-icons/"
+        } else if path.hasPrefix("/icon-cache/") {
+            directoryURL = try resolveIconCacheDirectory()
+            prefix = "/icon-cache/"
+        } else {
+            throw ImportError.invalidPayload
+        }
+
+        guard let relativePath = validatedRuntimeRelativePath(
+            requestedPath: path,
+            urlPrefix: prefix
+        ) else {
+            throw ImportError.invalidPayload
+        }
+
+        let candidateURL = directoryURL.appendingPathComponent(relativePath).standardizedFileURL
+        let resolvedDirectory = directoryURL.resolvingSymlinksInPath().standardizedFileURL.path
+        let resolvedCandidate = candidateURL.resolvingSymlinksInPath().standardizedFileURL.path
+
+        guard resolvedCandidate.hasPrefix(resolvedDirectory + "/") else {
+            throw ImportError.invalidPayload
+        }
+
+        return candidateURL
+    }
+
+    private func sanitizeExportSpaces(
+        _ values: [Any],
+        warnings: inout [String],
+        localIconPaths: inout Set<String>
+    ) -> [[String: Any]] {
+        values.compactMap { value in
+            guard let payload = value as? [String: Any],
+                  let id = payload["id"] as? String,
+                  let title = payload["title"] as? String,
+                  let rawItems = payload["items"] as? [Any] else {
+                return nil
+            }
+
+            let items = rawItems.compactMap {
+                sanitizeExportItem(
+                    $0,
+                    warnings: &warnings,
+                    localIconPaths: &localIconPaths
+                )
+            }
+
+            var space: [String: Any] = [
+                "id": id,
+                "title": title,
+                "items": items,
+            ]
+
+            if let background = payload["background"] as? [String: Any] {
+                space["background"] = background
+            }
+
+            return space
+        }
+    }
+
+    private func sanitizeExportItem(
+        _ value: Any,
+        warnings: inout [String],
+        localIconPaths: inout Set<String>
+    ) -> [String: Any]? {
+        guard let payload = value as? [String: Any],
+              let type = payload["type"] as? String,
+              let id = payload["id"] as? String,
+              let title = payload["title"] as? String else {
+            return nil
+        }
+
+        if type == "url" {
+            guard let url = payload["url"] as? String else {
+                return nil
+            }
+
+            let icon = normalizeExportIcon(
+                payload["icon"] as? String ?? "",
+                warnings: &warnings,
+                localIconPaths: &localIconPaths
+            )
+            var item: [String: Any] = [
+                "type": "url",
+                "id": id,
+                "title": title,
+                "url": url,
+                "icon": icon,
+                "addFrame": payload["addFrame"] as? Bool ?? true,
+            ]
+
+            if let customization = sanitizeIconCustomization(payload["iconCustomization"]) {
+                item["iconCustomization"] = customization
+            }
+
+            if let restoreOrigin = sanitizeRestoreOrigin(payload["restoreOrigin"]) {
+                item["restoreOrigin"] = restoreOrigin
+            }
+
+            return item
+        }
+
+        if type == "folder", let rawItems = payload["items"] as? [Any] {
+            let icon = normalizeExportIcon(
+                payload["icon"] as? String ?? "",
+                warnings: &warnings,
+                localIconPaths: &localIconPaths
+            )
+            let items = rawItems.compactMap { rawItem -> [String: Any]? in
+                guard let item = sanitizeExportItem(
+                    rawItem,
+                    warnings: &warnings,
+                    localIconPaths: &localIconPaths
+                ), item["type"] as? String == "url" else {
+                    return nil
+                }
+                return item
+            }
+
+            return [
+                "type": "folder",
+                "id": id,
+                "title": title,
+                "icon": icon,
+                "items": items,
+            ]
+        }
+
+        return nil
+    }
+
+    private func normalizeExportIcon(
+        _ value: String,
+        warnings: inout [String],
+        localIconPaths: inout Set<String>
+    ) -> String {
+        let icon = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !icon.isEmpty, !icon.hasPrefix("blob:") else {
+            return ""
+        }
+
+        if icon.hasPrefix("/user-icons/") || icon.hasPrefix("/icon-cache/") {
+            localIconPaths.insert(icon)
+            return icon
+        }
+
+        if icon.hasPrefix("http://") || icon.hasPrefix("https://") || icon.hasPrefix("data:image/") {
+            do {
+                let cachedPath = try cacheIcon(from: icon)
+                localIconPaths.insert(cachedPath)
+                return cachedPath
+            } catch {
+                warnings.append("Не удалось закешировать remote icon: \(icon)")
+            }
+        }
+
+        return icon
+    }
+
+    private func readIconAssets(
+        paths: Set<String>,
+        warnings: inout [String]
+    ) -> [String: Any] {
+        var assets: [String: Any] = [:]
+
+        for path in paths.sorted() {
+            do {
+                let directoryURL: URL
+                let prefix: String
+                if path.hasPrefix("/user-icons/") {
+                    directoryURL = try resolveUserIconsDirectory()
+                    prefix = "/user-icons/"
+                } else if path.hasPrefix("/icon-cache/") {
+                    directoryURL = try resolveIconCacheDirectory()
+                    prefix = "/icon-cache/"
+                } else {
+                    continue
+                }
+
+                guard let fileURL = resolveRuntimeFileURL(
+                    requestedPath: path,
+                    urlPrefix: prefix,
+                    directoryURL: directoryURL
+                ) else {
+                    warnings.append("Файл иконки не найден: \(path)")
+                    continue
+                }
+
+                let data = try Data(contentsOf: fileURL)
+                assets[path] = [
+                    "mimeType": mimeType(for: fileURL.pathExtension),
+                    "data": data.base64EncodedString(),
+                ]
+            } catch {
+                warnings.append("Не удалось прочитать иконку: \(path)")
+            }
+        }
+
+        return assets
+    }
+
+    private func sanitizeRestoreOrigin(_ value: Any?) -> [String: Any]? {
+        guard let payload = value as? [String: Any],
+              let spaceId = payload["spaceId"] as? String,
+              let tileIndex = payload["tileIndex"] as? NSNumber else {
+            return nil
+        }
+
+        return ["spaceId": spaceId, "tileIndex": tileIndex.intValue]
+    }
+
+    private func sanitizeIconCustomization(_ value: Any?) -> [String: Any]? {
+        guard let payload = value as? [String: Any],
+              let scale = payload["scale"] as? NSNumber,
+              let hasBackground = payload["hasBackground"] as? Bool,
+              let backgroundColor = payload["backgroundColor"] as? String else {
+            return nil
+        }
+
+        let color = backgroundColor.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil
+            ? backgroundColor
+            : "#00FFF4"
+        let volumePlacement = payload["volumePlacement"] as? String
+
+        return [
+            "scale": min(120, max(50, scale.doubleValue)),
+            "hasBackground": hasBackground,
+            "backgroundColor": color,
+            "volumeAlpha": clampedNumber(payload["volumeAlpha"], min: 0, max: 100, fallback: 40),
+            "volumePlacement": volumePlacement == "below" ? "below" : "above",
+            "edgeAlpha": clampedNumber(payload["edgeAlpha"], min: 0, max: 100, fallback: 100),
+            "edgeThickness": roundedNumber(payload["edgeThickness"], min: 0, max: 3, fallback: 2),
+        ]
+    }
+
+    private func clampedNumber(_ value: Any?, min minimum: Double, max maximum: Double, fallback: Double) -> Double {
+        guard let number = value as? NSNumber else {
+            return fallback
+        }
+        return min(maximum, max(minimum, number.doubleValue))
+    }
+
+    private func roundedNumber(_ value: Any?, min minimum: Double, max maximum: Double, fallback: Double) -> Double {
+        let number = clampedNumber(value, min: minimum, max: maximum, fallback: fallback)
+        return (number * 10).rounded() / 10
+    }
+
     private func parseIconSource(from body: Data, key: String) throws -> String {
         let object: Any
         do {
@@ -1152,6 +1749,23 @@ private extension DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
+        return formatter
+    }()
+
+    static let launeyExportDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
+private extension ISO8601DateFormatter {
+    static let launeyExport: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
 }
