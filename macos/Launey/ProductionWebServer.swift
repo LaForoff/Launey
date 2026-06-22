@@ -770,12 +770,14 @@ final class ProductionWebServer {
         if let resourcesURL = Bundle.main.resourceURL {
             let bundledWebURL = resourcesURL.appendingPathComponent("web", isDirectory: true)
             if fileManager.fileExists(atPath: bundledWebURL.path) {
+                print("[ProductionServer] Using bundled Resources/web at \(bundledWebURL.path)")
                 return bundledWebURL
             }
         }
 
         let fallbackWebURL = URL(fileURLWithPath: "/Users/neketosa/Launey/launey-web/dist", isDirectory: true)
         if fileManager.fileExists(atPath: fallbackWebURL.path) {
+            print("[ProductionServer] Bundled Resources/web is unavailable; using fallback dist at \(fallbackWebURL.path)")
             return fallbackWebURL
         }
 
