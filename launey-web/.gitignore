@@ -10,8 +10,14 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist_backup
 .vite
 *.local
+
+# Development runtime data (production uses Application Support/Launey)
+public/icon-cache/
+public/user-icons/
+data/settings.json
 
 # Editor directories and files
 .vscode/*
