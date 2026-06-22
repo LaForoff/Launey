@@ -49,9 +49,6 @@ final class ServerManager: ObservableObject {
     static let shared = ServerManager()
     static let runtimeMode: RuntimeMode = .production
 
-    private let launchCommand = """
-    cd /Users/neketosa/Launey/launey-web && npm run dev
-    """
     private let retryDelay: Duration = .milliseconds(500)
     private let maximumAttempts = 60
 
@@ -137,6 +134,11 @@ final class ServerManager: ObservableObject {
             return true
         }
 
+        guard let webDirectory = resolveDevWebDirectory() else {
+            print("[Launey] Dev web project was not found. Set LAUNEY_WEB_DIR or run a Debug build from the monorepo.")
+            return false
+        }
+
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         configureLogging(for: outputPipe, prefix: "[Vite]")
@@ -144,12 +146,13 @@ final class ServerManager: ObservableObject {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-lc", launchCommand]
+        process.arguments = ["-lc", "npm run dev"]
+        process.currentDirectoryURL = webDirectory
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
         do {
-            print("[Launey] Starting server with: /bin/zsh -lc \"\(launchCommand)\"")
+            print("[Launey] Starting dev server in \(webDirectory.path)")
             try process.run()
 
             serverProcess = process
@@ -163,6 +166,32 @@ final class ServerManager: ObservableObject {
             print("[Launey] Launch error details: \(String(reflecting: error))")
             return false
         }
+    }
+
+    private func resolveDevWebDirectory() -> URL? {
+        let fileManager = FileManager.default
+
+        if let override = ProcessInfo.processInfo.environment["LAUNEY_WEB_DIR"] {
+            let directory = URL(fileURLWithPath: override, isDirectory: true)
+            if fileManager.fileExists(atPath: directory.appendingPathComponent("package.json").path) {
+                return directory
+            }
+        }
+
+        #if DEBUG
+        let sourceFile = URL(fileURLWithPath: #filePath)
+        let macOSProjectDirectory = sourceFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let repositoryRoot = macOSProjectDirectory.deletingLastPathComponent()
+        let directory = repositoryRoot.appendingPathComponent("launey-web", isDirectory: true)
+
+        if fileManager.fileExists(atPath: directory.appendingPathComponent("package.json").path) {
+            return directory
+        }
+        #endif
+
+        return nil
     }
 
     private func startProductionServer() -> Bool {

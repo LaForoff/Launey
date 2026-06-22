@@ -775,17 +775,11 @@ final class ProductionWebServer {
             }
         }
 
-        let fallbackWebURL = URL(fileURLWithPath: "/Users/neketosa/Launey/launey-web/dist", isDirectory: true)
-        if fileManager.fileExists(atPath: fallbackWebURL.path) {
-            print("[ProductionServer] Bundled Resources/web is unavailable; using fallback dist at \(fallbackWebURL.path)")
-            return fallbackWebURL
-        }
-
         throw NSError(
             domain: "Launey.ProductionWebServer",
             code: 1,
             userInfo: [
-                NSLocalizedDescriptionKey: "Missing production web root at Resources/web and fallback dist path."
+                NSLocalizedDescriptionKey: "Missing production web root at Resources/web."
             ]
         )
     }
