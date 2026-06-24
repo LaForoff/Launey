@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Launey Updates</title>
+    <link>https://raw.githubusercontent.com/LaForoff/Launey/main/appcast.xml</link>
+    <description>Launey app updates</description>
+    <language>ru</language>
+    <item>
+      <title>Launey 0.1.1</title>
+      <enclosure
+        url="https://github.com/LaForoff/Launey/releases/download/v0.1.1/Launey-v0.1.1-macOS.zip"
+        sparkle:shortVersionString="0.1.1"
+        sparkle:version="2"
+        sparkle:edSignature="PASTE_ED_SIGNATURE_HERE"
+        length="0"
+        type="application/octet-stream"
+      />
+    </item>
+  </channel>
+</rss>
