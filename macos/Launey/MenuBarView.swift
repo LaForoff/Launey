@@ -9,9 +9,13 @@ import AppKit
 struct MenuBarView: View {
     @ObservedObject private var serverManager = ServerManager.shared
 
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+    }
+
     var body: some View {
         Text("Launey")
-        Text("Version 1.0.0")
+        Text("Version \(appVersion)")
         Text("Статус: \(serverManager.status.localizedTitle)")
 
         Divider()
@@ -23,9 +27,7 @@ struct MenuBarView: View {
         }
 
         Button("Проверить обновления") {
-            Task {
-                await BrowserManager.openUpdateCheckWhenReady()
-            }
+            UpdateManager.shared.checkForUpdates()
         }
 
         Divider()

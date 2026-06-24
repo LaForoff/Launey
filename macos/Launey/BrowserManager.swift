@@ -24,23 +24,4 @@ final class BrowserManager: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.open(Self.applicationURL)
     }
 
-    static func openUpdateCheckWhenReady() async {
-        guard await ServerManager.shared.ensureServerIsRunning() else {
-            print("[Launey] Update page was not opened because the server is unavailable")
-            return
-        }
-
-        guard var components = URLComponents(
-            url: Self.applicationURL,
-            resolvingAgainstBaseURL: false
-        ) else {
-            return
-        }
-
-        components.queryItems = [URLQueryItem(name: "action", value: "check-updates")]
-
-        if let url = components.url {
-            NSWorkspace.shared.open(url)
-        }
-    }
 }
