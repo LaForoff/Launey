@@ -74,6 +74,7 @@
 				0EE1547D2FE01CB300FC7AA5 /* Frameworks */,
 				0EE1547E2FE01CB300FC7AA5 /* Resources */,
 				0EE154902FE2000000FC7AA5 /* Build and Embed Web Frontend */,
+				0EE154962FE5000000FC7AA5 /* Complete Sparkle Russian Localization */,
 			);
 			buildRules = (
 			);
@@ -138,6 +139,26 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		0EE154962FE5000000FC7AA5 /* Complete Sparkle Russian Localization */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/SparkleLocalization/ru.lproj/SparkleMissing.strings",
+			);
+			name = "Complete Sparkle Russian Localization";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "set -euo pipefail\n\nSPARKLE_FRAMEWORK=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework\"\nSPARKLE_RU_STRINGS=\"${SPARKLE_FRAMEWORK}/Versions/Current/Resources/ru.lproj/Sparkle.strings\"\nMISSING_RU_STRINGS=\"${SRCROOT}/SparkleLocalization/ru.lproj/SparkleMissing.strings\"\n\nif [[ ! -f \"${SPARKLE_RU_STRINGS}\" ]]; then\n    echo \"error: Sparkle Russian localization was not found at ${SPARKLE_RU_STRINGS}\"\n    exit 1\nfi\n\nif [[ ! -f \"${MISSING_RU_STRINGS}\" ]]; then\n    echo \"error: Supplemental Sparkle localization was not found at ${MISSING_RU_STRINGS}\"\n    exit 1\nfi\n\n/usr/libexec/PlistBuddy -c \"Merge '${MISSING_RU_STRINGS}'\" \"${SPARKLE_RU_STRINGS}\"\n\nif [[ \"${CODE_SIGNING_ALLOWED:-NO}\" == \"YES\" && -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]]; then\n    /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"${SPARKLE_FRAMEWORK}\"\nfi\n\necho \"Completed Sparkle Russian localization: ${SPARKLE_RU_STRINGS}\"\n";
+		};
 		0EE154902FE2000000FC7AA5 /* Build and Embed Web Frontend */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
