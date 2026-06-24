@@ -6,13 +6,13 @@
     <description>Launey app updates</description>
     <language>ru</language>
     <item>
-      <title>Launey 0.1.1</title>
+      <title>Launey 0.1.2</title>
       <enclosure
-        url="https://github.com/LaForoff/Launey/releases/download/v0.1.1/Launey-v0.1.1-macOS.zip"
-        sparkle:shortVersionString="0.1.1"
-        sparkle:version="2"
-        sparkle:edSignature="wREYWXLtuO2IU3+cZk69Aev1PF7+08oLgVPkQ4SGS+lxioEKk+T5aogpQnnkQCWOp7jzFGBUNi3DdiCiuDKaCw=="
-        length="4430677"
+        url="https://github.com/LaForoff/Launey/releases/download/v0.1.2/Launey-v0.1.2-macOS.zip"
+        sparkle:shortVersionString="0.1.2"
+        sparkle:version="3"
+        sparkle:edSignature="9qIRtCA+4DIOcO6P46HQ6l2x7hJprG292lrha4/1RCYIfwOnY0LSkHvZGQg5b4yR2yYeuL1mdXsmgX1rM/18Cw=="
+        length="4397366"
         type="application/octet-stream"
       />
     </item>
