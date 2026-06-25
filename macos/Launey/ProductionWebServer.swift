@@ -4,12 +4,16 @@
 //
 
 import Foundation
+import Darwin
 import Network
 
 final class ProductionWebServer {
     private static let appStoreCountries = ["us", "ru", "gb", "tr", "de", "fr", "pl", "kz"]
     private static let minimumAppStoreRelevanceScore = 40
     private static let appStoreUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+    private static let siteIconsCacheTTL: TimeInterval = 30 * 60
+    private static let maximumSiteHTMLBytes = 2 * 1024 * 1024
+    private static let maximumSiteManifestBytes = 512 * 1024
 
     private static let allowedIconExtensions: Set<String> = [
         "png",
@@ -89,6 +93,41 @@ final class ProductionWebServer {
         }
     }
 
+    private struct SiteIconCandidate {
+        let id: String
+        let type: String
+        let url: String
+        let previewURL: String
+        let source: String
+        let score: Int
+
+        var json: [String: Any] {
+            [
+                "id": id,
+                "type": type,
+                "url": url,
+                "previewUrl": previewURL,
+                "source": source,
+                "score": score,
+            ]
+        }
+    }
+
+    private struct SiteIconsCacheEntry {
+        let expiresAt: Date
+        let payload: [String: Any]
+    }
+
+    private struct SiteManifestPayload: Decodable {
+        let icons: [SiteManifestIcon]?
+    }
+
+    private struct SiteManifestIcon: Decodable {
+        let src: String?
+        let sizes: String?
+        let type: String?
+    }
+
     private final class DownloadResultBox: @unchecked Sendable {
         private let lock = NSLock()
         private var result: Result<(Data, URLResponse), Error>?
@@ -130,6 +169,36 @@ final class ProductionWebServer {
         case invalidResponse
     }
 
+    private enum SiteIconsError: Error {
+        case invalidURL
+        case unsafeURL
+        case networkFailed
+        case responseTooLarge
+    }
+
+    private final class SecureRedirectDelegate: NSObject, URLSessionTaskDelegate {
+        private let validator: (URL) -> Bool
+
+        init(validator: @escaping (URL) -> Bool) {
+            self.validator = validator
+        }
+
+        func urlSession(
+            _ session: URLSession,
+            task: URLSessionTask,
+            willPerformHTTPRedirection response: HTTPURLResponse,
+            newRequest request: URLRequest,
+            completionHandler: @escaping (URLRequest?) -> Void
+        ) {
+            guard let url = request.url, validator(url) else {
+                completionHandler(nil)
+                return
+            }
+
+            completionHandler(request)
+        }
+    }
+
     private struct RestoredIcon {
         let fileURL: URL
         let data: Data
@@ -138,6 +207,7 @@ final class ProductionWebServer {
     private let port: UInt16
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "designby4roff.launey.production-server")
+    private var siteIconsCache: [String: SiteIconsCacheEntry] = [:]
 
     init(port: UInt16) {
         self.port = port
@@ -224,6 +294,18 @@ final class ProductionWebServer {
                 }
 
                 return makeAppStoreIconResponse(requestPath: request.path)
+            }
+
+            if requestedPath == "/api/site-icons" {
+                guard request.method == "GET" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeSiteIconsResponse(requestPath: request.path)
             }
 
             if requestedPath == "/api/import" {
@@ -621,6 +703,37 @@ final class ProductionWebServer {
         }
     }
 
+    private func makeSiteIconsResponse(requestPath: String) -> Data {
+        let rawURL = queryParameter("url", from: requestPath)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard !rawURL.isEmpty else {
+            return makeJSONObjectResponse(
+                status: 200,
+                reason: "OK",
+                object: ["ok": false, "error": "Иконки не найдены"]
+            )
+        }
+
+        do {
+            let payload = try findSiteIcons(rawURL: rawURL)
+            return makeJSONObjectResponse(status: 200, reason: "OK", object: payload)
+        } catch SiteIconsError.invalidURL, SiteIconsError.unsafeURL {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Invalid site URL"]
+            )
+        } catch {
+            print("[ProductionServer] Failed to resolve site icons: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": error.localizedDescription]
+            )
+        }
+    }
+
     private func makeSettingsResponse() -> Data {
         do {
             let settings = try loadSettings()
@@ -702,6 +815,267 @@ final class ProductionWebServer {
                 body: ["error": "Failed to read runtime file"]
             )
         }
+    }
+
+    private func findSiteIcons(rawURL: String) throws -> [String: Any] {
+        let pageURL = try normalizeSiteURL(rawURL)
+        try validateExternalSiteURL(pageURL)
+
+        let cacheKey = pageURL.absoluteString
+        let now = Date()
+        if let cached = siteIconsCache[cacheKey], cached.expiresAt > now {
+            return cached.payload
+        }
+
+        let payload: [String: Any]
+        do {
+            let (data, response) = try fetchURL(
+                pageURL,
+                userAgent: Self.appStoreUserAgent,
+                maxBytes: Self.maximumSiteHTMLBytes,
+                validatesExternalSiteURL: true
+            )
+
+            guard let html = String(data: data, encoding: .utf8),
+                  let resolvedPageURL = response.url else {
+                payload = buildFallbackSiteIconsPayload(pageURL: pageURL)
+                siteIconsCache[cacheKey] = SiteIconsCacheEntry(
+                    expiresAt: now.addingTimeInterval(Self.siteIconsCacheTTL),
+                    payload: payload
+                )
+                return payload
+            }
+
+            var candidates: [String: SiteIconCandidate] = [:]
+            collectHTMLLinkCandidates(html: html, pageURL: resolvedPageURL, candidates: &candidates)
+            collectMetaCandidates(html: html, pageURL: resolvedPageURL, candidates: &candidates)
+            collectManifestCandidates(html: html, pageURL: resolvedPageURL, candidates: &candidates)
+            collectFallbackCandidates(pageURL: resolvedPageURL, candidates: &candidates)
+
+            let sorted = sortedSiteCandidates(candidates)
+            if sorted.isEmpty {
+                payload = buildFallbackSiteIconsPayload(pageURL: resolvedPageURL)
+            } else {
+                payload = [
+                    "ok": true,
+                    "domain": resolvedPageURL.host ?? pageURL.host ?? "",
+                    "candidates": sorted.map(\.json),
+                ]
+            }
+        } catch SiteIconsError.unsafeURL, SiteIconsError.invalidURL {
+            throw SiteIconsError.unsafeURL
+        } catch {
+            payload = buildFallbackSiteIconsPayload(pageURL: pageURL)
+        }
+
+        siteIconsCache[cacheKey] = SiteIconsCacheEntry(
+            expiresAt: now.addingTimeInterval(Self.siteIconsCacheTTL),
+            payload: payload
+        )
+        return payload
+    }
+
+    private func buildFallbackSiteIconsPayload(pageURL: URL) -> [String: Any] {
+        var candidates: [String: SiteIconCandidate] = [:]
+        collectFallbackCandidates(pageURL: pageURL, candidates: &candidates)
+        let sorted = sortedSiteCandidates(candidates)
+
+        guard !sorted.isEmpty else {
+            return ["ok": false, "error": "Иконки не найдены"]
+        }
+
+        return [
+            "ok": true,
+            "domain": pageURL.host ?? "",
+            "candidates": sorted.map(\.json),
+        ]
+    }
+
+    private func collectHTMLLinkCandidates(
+        html: String,
+        pageURL: URL,
+        candidates: inout [String: SiteIconCandidate]
+    ) {
+        for tag in captureMatches(pattern: #"<link\b[^>]*>"#, in: html, captureGroup: 0) {
+            let rel = readHTMLAttribute(tag: tag, attribute: "rel")?
+                .lowercased()
+                .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard let href = readHTMLAttribute(tag: tag, attribute: "href"),
+                  let absoluteURL = absoluteURLString(href, baseURL: pageURL) else {
+                continue
+            }
+
+            if rel.contains("apple-touch-icon-precomposed") || rel.contains("apple-touch-icon") {
+                upsertSiteCandidate(
+                    &candidates,
+                    type: "apple-touch-icon",
+                    url: absoluteURL,
+                    previewURL: absoluteURL,
+                    source: "Apple Touch Icon",
+                    score: 96 + scoreFromDeclaredSizes(readHTMLAttribute(tag: tag, attribute: "sizes"))
+                )
+                continue
+            }
+
+            if rel.contains("shortcut icon") || rel == "icon" || rel.contains(" icon") || rel.contains("mask-icon") {
+                upsertSiteCandidate(
+                    &candidates,
+                    type: "favicon",
+                    url: absoluteURL,
+                    previewURL: absoluteURL,
+                    source: rel.contains("mask-icon") ? "Mask Icon" : "Favicon",
+                    score: 38 + scoreFromDeclaredSizes(readHTMLAttribute(tag: tag, attribute: "sizes"))
+                )
+            }
+        }
+    }
+
+    private func collectMetaCandidates(
+        html: String,
+        pageURL: URL,
+        candidates: inout [String: SiteIconCandidate]
+    ) {
+        for tag in captureMatches(pattern: #"<meta\b[^>]*>"#, in: html, captureGroup: 0) {
+            let property = readHTMLAttribute(tag: tag, attribute: "property")?.lowercased()
+            let name = readHTMLAttribute(tag: tag, attribute: "name")?.lowercased()
+            guard (property == "og:image" || name == "twitter:image"),
+                  let content = readHTMLAttribute(tag: tag, attribute: "content"),
+                  let absoluteURL = absoluteURLString(content, baseURL: pageURL) else {
+                continue
+            }
+
+            upsertSiteCandidate(
+                &candidates,
+                type: "og-image",
+                url: absoluteURL,
+                previewURL: absoluteURL,
+                source: property == "og:image" ? "Open Graph" : "Twitter",
+                score: 64 + scoreFromURLSize(absoluteURL)
+            )
+        }
+    }
+
+    private func collectManifestCandidates(
+        html: String,
+        pageURL: URL,
+        candidates: inout [String: SiteIconCandidate]
+    ) {
+        guard let manifestURL = findManifestURL(html: html, pageURL: pageURL) else {
+            return
+        }
+
+        do {
+            let (data, _) = try fetchURL(
+                manifestURL,
+                userAgent: Self.appStoreUserAgent,
+                maxBytes: Self.maximumSiteManifestBytes,
+                validatesExternalSiteURL: true
+            )
+            let payload = try JSONDecoder().decode(SiteManifestPayload.self, from: data)
+
+            for icon in payload.icons ?? [] {
+                guard let src = icon.src,
+                      let absoluteURL = absoluteURLString(src, baseURL: manifestURL) else {
+                    continue
+                }
+
+                let mimeBonus: Int
+                if icon.type?.contains("svg") == true {
+                    mimeBonus = 4
+                } else if icon.type?.contains("png") == true {
+                    mimeBonus = 8
+                } else {
+                    mimeBonus = 0
+                }
+
+                upsertSiteCandidate(
+                    &candidates,
+                    type: "manifest",
+                    url: absoluteURL,
+                    previewURL: absoluteURL,
+                    source: "Manifest Icon",
+                    score: 84 + scoreFromDeclaredSizes(icon.sizes) + mimeBonus + scoreFromURLSize(absoluteURL)
+                )
+            }
+        } catch {
+            return
+        }
+    }
+
+    private func findManifestURL(html: String, pageURL: URL) -> URL? {
+        for tag in captureMatches(pattern: #"<link\b[^>]*>"#, in: html, captureGroup: 0) {
+            let rel = readHTMLAttribute(tag: tag, attribute: "rel")?.lowercased() ?? ""
+            guard rel.contains("manifest"),
+                  let href = readHTMLAttribute(tag: tag, attribute: "href"),
+                  let absoluteURL = absoluteURL(href, baseURL: pageURL) else {
+                continue
+            }
+
+            return absoluteURL
+        }
+
+        return nil
+    }
+
+    private func collectFallbackCandidates(pageURL: URL, candidates: inout [String: SiteIconCandidate]) {
+        guard let host = pageURL.host,
+              let scheme = pageURL.scheme,
+              let originURL = URL(string: "\(scheme)://\(host)") else {
+            return
+        }
+
+        let faviconURL = originURL.appendingPathComponent("favicon.ico").absoluteString
+        let googleURL = "https://www.google.com/s2/favicons?domain=\(percentEncodeQueryValue(host))&sz=256"
+
+        upsertSiteCandidate(
+            &candidates,
+            type: "favicon",
+            url: faviconURL,
+            previewURL: faviconURL,
+            source: "Favicon fallback",
+            score: 25
+        )
+
+        upsertSiteCandidate(
+            &candidates,
+            type: "google-favicon",
+            url: googleURL,
+            previewURL: googleURL,
+            source: "Google Favicon",
+            score: 18
+        )
+    }
+
+    private func sortedSiteCandidates(_ candidates: [String: SiteIconCandidate]) -> [SiteIconCandidate] {
+        candidates.values.sorted { lhs, rhs in
+            if lhs.score == rhs.score {
+                return lhs.previewURL < rhs.previewURL
+            }
+            return lhs.score > rhs.score
+        }
+    }
+
+    private func upsertSiteCandidate(
+        _ candidates: inout [String: SiteIconCandidate],
+        type: String,
+        url: String,
+        previewURL: String,
+        source: String,
+        score: Int
+    ) {
+        if let current = candidates[previewURL], current.score >= score {
+            return
+        }
+
+        candidates[previewURL] = SiteIconCandidate(
+            id: "\(type)-\(javascriptStyleHash(previewURL))",
+            type: type,
+            url: url,
+            previewURL: previewURL,
+            source: source,
+            score: score
+        )
     }
 
     private func findAppStoreIcon(query: String, country: String?) throws -> [String: Any] {
@@ -1267,7 +1641,155 @@ final class ProductionWebServer {
         return components.queryItems?.first { $0.name == name }?.value
     }
 
-    private func fetchURL(_ url: URL, userAgent: String?) throws -> (Data, HTTPURLResponse) {
+    private func normalizeSiteURL(_ rawURL: String) throws -> URL {
+        let value = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else {
+            throw SiteIconsError.invalidURL
+        }
+
+        let prefixed = value.range(of: #"^https?://"#, options: [.regularExpression, .caseInsensitive]) == nil
+            ? "https://\(value)"
+            : value
+
+        guard let url = URL(string: prefixed),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host?.isEmpty == false else {
+            throw SiteIconsError.invalidURL
+        }
+
+        return url
+    }
+
+    private func validateExternalSiteURL(_ url: URL) throws {
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = url.host?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !host.isEmpty else {
+            throw SiteIconsError.invalidURL
+        }
+
+        guard !isUnsafeHost(host) else {
+            throw SiteIconsError.unsafeURL
+        }
+    }
+
+    private func isUnsafeHost(_ host: String) -> Bool {
+        let normalizedHost = host
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+            .lowercased()
+
+        if normalizedHost == "localhost" || normalizedHost.hasSuffix(".localhost") {
+            return true
+        }
+
+        if isUnsafeIPv4Address(normalizedHost) || isUnsafeIPv6Address(normalizedHost) {
+            return true
+        }
+
+        return resolvedAddresses(for: normalizedHost).contains { address in
+            isUnsafeIPv4Address(address) || isUnsafeIPv6Address(address)
+        }
+    }
+
+    private func resolvedAddresses(for host: String) -> [String] {
+        var hints = addrinfo(
+            ai_flags: AI_ADDRCONFIG,
+            ai_family: AF_UNSPEC,
+            ai_socktype: SOCK_STREAM,
+            ai_protocol: IPPROTO_TCP,
+            ai_addrlen: 0,
+            ai_canonname: nil,
+            ai_addr: nil,
+            ai_next: nil
+        )
+        var result: UnsafeMutablePointer<addrinfo>?
+
+        guard getaddrinfo(host, nil, &hints, &result) == 0, let result else {
+            return []
+        }
+        defer { freeaddrinfo(result) }
+
+        var addresses: [String] = []
+        var pointer: UnsafeMutablePointer<addrinfo>? = result
+        while let current = pointer {
+            let family = current.pointee.ai_family
+            if family == AF_INET {
+                var addr = current.pointee.ai_addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr }
+                var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+                if inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN)) != nil {
+                    addresses.append(String(cString: buffer))
+                }
+            } else if family == AF_INET6 {
+                var addr = current.pointee.ai_addr.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { $0.pointee.sin6_addr }
+                var buffer = [CChar](repeating: 0, count: Int(INET6_ADDRSTRLEN))
+                if inet_ntop(AF_INET6, &addr, &buffer, socklen_t(INET6_ADDRSTRLEN)) != nil {
+                    addresses.append(String(cString: buffer))
+                }
+            }
+            pointer = current.pointee.ai_next
+        }
+
+        return addresses
+    }
+
+    private func isUnsafeIPv4Address(_ value: String) -> Bool {
+        var address = in_addr()
+        guard inet_pton(AF_INET, value, &address) == 1 else {
+            return false
+        }
+
+        let octets = withUnsafeBytes(of: address) { Array($0) }
+        guard octets.count == 4 else {
+            return true
+        }
+
+        let first = octets[0]
+        let second = octets[1]
+
+        return first == 0 ||
+            first == 10 ||
+            first == 127 ||
+            (first == 169 && second == 254) ||
+            (first == 172 && (16...31).contains(second)) ||
+            (first == 192 && second == 168)
+    }
+
+    private func isUnsafeIPv6Address(_ value: String) -> Bool {
+        var address = in6_addr()
+        guard inet_pton(AF_INET6, value, &address) == 1 else {
+            return false
+        }
+
+        let bytes = withUnsafeBytes(of: address) { Array($0) }
+        guard bytes.count == 16 else {
+            return true
+        }
+
+        let isLoopback = bytes.prefix(15).allSatisfy { $0 == 0 } && bytes[15] == 1
+        let isUnspecified = bytes.allSatisfy { $0 == 0 }
+        let isUniqueLocal = (bytes[0] & 0xfe) == 0xfc
+        let isLinkLocal = bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80
+        let isIPv4Mapped = bytes.prefix(10).allSatisfy { $0 == 0 } && bytes[10] == 0xff && bytes[11] == 0xff
+
+        if isIPv4Mapped {
+            let mappedIPv4 = "\(bytes[12]).\(bytes[13]).\(bytes[14]).\(bytes[15])"
+            return isUnsafeIPv4Address(mappedIPv4)
+        }
+
+        return isLoopback || isUnspecified || isUniqueLocal || isLinkLocal
+    }
+
+    private func fetchURL(
+        _ url: URL,
+        userAgent: String?,
+        maxBytes: Int? = nil,
+        validatesExternalSiteURL: Bool = false
+    ) throws -> (Data, HTTPURLResponse) {
+        if validatesExternalSiteURL {
+            try validateExternalSiteURL(url)
+        }
+
         var request = URLRequest(url: url)
         request.timeoutInterval = 8
         request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
@@ -1280,7 +1802,15 @@ final class ProductionWebServer {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 8
         configuration.timeoutIntervalForResource = 12
-        let session = URLSession(configuration: configuration)
+        let delegate = validatesExternalSiteURL
+            ? SecureRedirectDelegate { [weak self] url in
+                guard let self else {
+                    return false
+                }
+                return (try? self.validateExternalSiteURL(url)) != nil
+            }
+            : nil
+        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
 
         let task = session.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
@@ -1310,8 +1840,16 @@ final class ProductionWebServer {
             throw AppStoreIconError.invalidResponse
         }
 
+        if validatesExternalSiteURL, let finalURL = httpResponse.url {
+            try validateExternalSiteURL(finalURL)
+        }
+
         guard (200..<300).contains(httpResponse.statusCode) else {
             throw AppStoreIconError.networkFailed
+        }
+
+        if let maxBytes, data.count > maxBytes {
+            throw SiteIconsError.responseTooLarge
         }
 
         return (data, httpResponse)
@@ -1339,6 +1877,106 @@ final class ProductionWebServer {
 
     private func firstCapture(pattern: String, in text: String, captureGroup: Int = 1) -> String? {
         captureMatches(pattern: pattern, in: text, captureGroup: captureGroup).first
+    }
+
+    private func readHTMLAttribute(tag: String, attribute: String) -> String? {
+        firstCapture(
+            pattern: #"\#(attribute)\s*=\s*["']([^"']+)["']"#,
+            in: tag,
+            captureGroup: 1
+        )?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func absoluteURLString(_ value: String, baseURL: URL) -> String? {
+        absoluteURL(value, baseURL: baseURL)?.absoluteString
+    }
+
+    private func absoluteURL(_ value: String, baseURL: URL) -> URL? {
+        guard let url = URL(string: value, relativeTo: baseURL)?.absoluteURL,
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            return nil
+        }
+
+        return url
+    }
+
+    private func scoreFromDeclaredSizes(_ sizesValue: String?) -> Int {
+        guard let sizesValue, !sizesValue.isEmpty else {
+            return 0
+        }
+
+        var score = 0
+        for token in sizesValue.split(whereSeparator: { $0.isWhitespace }) {
+            guard let widthString = firstCapture(pattern: #"(\d{2,4})x(\d{2,4})"#, in: String(token)),
+                  let heightString = firstCapture(pattern: #"(\d{2,4})x(\d{2,4})"#, in: String(token), captureGroup: 2),
+                  let width = Double(widthString),
+                  let height = Double(heightString) else {
+                continue
+            }
+
+            let minSide = min(width, height)
+            let ratio = max(width, height) / max(1, minSide)
+
+            if minSide >= 512 {
+                score += 16
+            } else if minSide >= 192 {
+                score += 12
+            } else if minSide >= 180 {
+                score += 9
+            } else if minSide >= 96 {
+                score += 4
+            }
+
+            if ratio <= 1.2 {
+                score += 4
+            }
+        }
+
+        return score
+    }
+
+    private func scoreFromURLSize(_ url: String) -> Int {
+        let lower = url.lowercased()
+        guard let widthString = firstCapture(pattern: #"(\d{2,4})[x_](\d{2,4})"#, in: lower),
+              let heightString = firstCapture(pattern: #"(\d{2,4})[x_](\d{2,4})"#, in: lower, captureGroup: 2),
+              let width = Double(widthString),
+              let height = Double(heightString) else {
+            return lower.hasSuffix(".svg") ? 6 : 0
+        }
+
+        let minSide = min(width, height)
+        let ratio = max(width, height) / max(1, minSide)
+        var score = 0
+
+        if minSide >= 512 {
+            score += 16
+        } else if minSide >= 192 {
+            score += 11
+        } else if minSide >= 180 {
+            score += 8
+        } else if minSide >= 96 {
+            score += 3
+        }
+
+        if ratio <= 1.2 {
+            score += 4
+        }
+
+        return score
+    }
+
+    private func javascriptStyleHash(_ value: String) -> String {
+        var hash: Int32 = 0
+        for scalar in value.unicodeScalars {
+            hash = Int32(truncatingIfNeeded: (Int(hash) << 5) - Int(hash) + Int(scalar.value))
+        }
+
+        return String(abs(Int(hash)), radix: 36)
+    }
+
+    private func percentEncodeQueryValue(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
     }
 
     private func resolveRuntimeFileURL(
