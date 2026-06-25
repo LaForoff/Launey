@@ -7,6 +7,10 @@ import Foundation
 import Network
 
 final class ProductionWebServer {
+    private static let appStoreCountries = ["us", "ru", "gb", "tr", "de", "fr", "pl", "kz"]
+    private static let minimumAppStoreRelevanceScore = 40
+    private static let appStoreUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+
     private static let allowedIconExtensions: Set<String> = [
         "png",
         "jpg",
@@ -54,6 +58,37 @@ final class ProductionWebServer {
         let body: Data
     }
 
+    private struct AppStoreSearchPayload: Decodable {
+        let results: [AppStoreSearchResult]?
+    }
+
+    private struct AppStoreSearchResult: Decodable {
+        let trackName: String?
+        let sellerName: String?
+        let bundleId: String?
+        let trackViewUrl: String?
+    }
+
+    private struct AppStoreResolvedIcon {
+        let title: String
+        let appURL: String
+        let iconURL: String
+        let country: String
+        let matchedName: String
+        let score: Int
+
+        var json: [String: Any] {
+            [
+                "title": title,
+                "appUrl": appURL,
+                "iconUrl": iconURL,
+                "country": country,
+                "matchedName": matchedName,
+                "score": score,
+            ]
+        }
+    }
+
     private final class DownloadResultBox: @unchecked Sendable {
         private let lock = NSLock()
         private var result: Result<(Data, URLResponse), Error>?
@@ -86,6 +121,13 @@ final class ProductionWebServer {
     private enum ImportError: Error {
         case invalidJSON
         case invalidPayload
+    }
+
+    private enum AppStoreIconError: Error {
+        case invalidSearchURL
+        case invalidAppURL
+        case networkFailed
+        case invalidResponse
     }
 
     private struct RestoredIcon {
@@ -172,6 +214,18 @@ final class ProductionWebServer {
         }
 
         if requestedPath.hasPrefix("/api/") {
+            if requestedPath == "/api/app-store-icon" {
+                guard request.method == "GET" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeAppStoreIconResponse(requestPath: request.path)
+            }
+
             if requestedPath == "/api/import" {
                 guard request.method == "POST" else {
                     return makeJSONResponse(
@@ -537,6 +591,36 @@ final class ProductionWebServer {
         }
     }
 
+    private func makeAppStoreIconResponse(requestPath: String) -> Data {
+        let query = queryParameter("query", from: requestPath)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let country = queryParameter("country", from: requestPath)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        let selectedCountry = country.flatMap { Self.appStoreCountries.contains($0) ? $0 : nil }
+
+        guard query.count >= 2 else {
+            return makeJSONObjectResponse(
+                status: 200,
+                reason: "OK",
+                object: ["ok": false, "error": "Иконка не найдена"]
+            )
+        }
+
+        do {
+            let payload = try findAppStoreIcon(query: query, country: selectedCountry)
+            return makeJSONObjectResponse(status: 200, reason: "OK", object: payload)
+        } catch {
+            print("[ProductionServer] Failed to resolve App Store icon: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": error.localizedDescription]
+            )
+        }
+    }
+
     private func makeSettingsResponse() -> Data {
         do {
             let settings = try loadSettings()
@@ -618,6 +702,283 @@ final class ProductionWebServer {
                 body: ["error": "Failed to read runtime file"]
             )
         }
+    }
+
+    private func findAppStoreIcon(query: String, country: String?) throws -> [String: Any] {
+        let countries = country.map { [$0] } ?? Self.appStoreCountries
+
+        for countryCode in countries {
+            let payload = try findAppStoreIconsByCountry(query: query, country: countryCode)
+            if (payload["ok"] as? Bool) == true {
+                return payload
+            }
+        }
+
+        return ["ok": false, "error": "Иконка не найдена в App Store"]
+    }
+
+    private func findAppStoreIconsByCountry(query: String, country: String) throws -> [String: Any] {
+        guard let searchURL = makeAppStoreSearchURL(query: query, country: country) else {
+            throw AppStoreIconError.invalidSearchURL
+        }
+
+        let (data, _) = try fetchURL(searchURL, userAgent: nil)
+        let searchPayload = try JSONDecoder().decode(AppStoreSearchPayload.self, from: data)
+
+        let relevantCandidates = (searchPayload.results ?? [])
+            .map { app in (app: app, score: appStoreRelevanceScore(query: query, app: app)) }
+            .filter { $0.score >= Self.minimumAppStoreRelevanceScore && $0.app.trackViewUrl?.isEmpty == false }
+            .sorted { $0.score > $1.score }
+            .prefix(15)
+
+        guard !relevantCandidates.isEmpty else {
+            return ["ok": false, "error": "Иконка не найдена в App Store"]
+        }
+
+        var results: [AppStoreResolvedIcon] = []
+        for candidate in relevantCandidates {
+            guard let appURL = candidate.app.trackViewUrl,
+                  let iconURL = try parseAppIconFromAppPage(appURL) else {
+                continue
+            }
+
+            results.append(
+                AppStoreResolvedIcon(
+                    title: candidate.app.trackName ?? query,
+                    appURL: appURL,
+                    iconURL: iconURL,
+                    country: country,
+                    matchedName: candidate.app.trackName ?? "",
+                    score: candidate.score
+                )
+            )
+        }
+
+        guard let first = results.first else {
+            return ["ok": false, "error": "Иконка не найдена в App Store"]
+        }
+
+        return [
+            "ok": true,
+            "title": first.title,
+            "appUrl": first.appURL,
+            "iconUrl": first.iconURL,
+            "country": first.country,
+            "matchedName": first.matchedName,
+            "score": first.score,
+            "results": results.map(\.json),
+        ]
+    }
+
+    private func makeAppStoreSearchURL(query: String, country: String) -> URL? {
+        var components = URLComponents(string: "https://itunes.apple.com/search")
+        components?.queryItems = [
+            URLQueryItem(name: "term", value: query),
+            URLQueryItem(name: "country", value: country),
+            URLQueryItem(name: "media", value: "software"),
+            URLQueryItem(name: "entity", value: "software"),
+            URLQueryItem(name: "limit", value: "15"),
+        ]
+        return components?.url
+    }
+
+    private func appStoreRelevanceScore(query: String, app: AppStoreSearchResult) -> Int {
+        let normalizedQuery = normalizeForMatch(query)
+        let track = normalizeForMatch(app.trackName)
+        let seller = normalizeForMatch(app.sellerName)
+        let bundle = normalizeForMatch(app.bundleId)
+
+        guard !normalizedQuery.isEmpty else {
+            return 0
+        }
+
+        var score = 0
+        score += fieldScore(query: normalizedQuery, value: track, exact: 120, startsWith: 95, includes: 65)
+        score += fieldScore(query: normalizedQuery, value: seller, exact: 40, startsWith: 28, includes: 14)
+        score += fieldScore(query: normalizedQuery, value: bundle, exact: 42, startsWith: 30, includes: 18)
+
+        if track.contains("studio") && normalizedQuery == "youtube" {
+            score -= 55
+        }
+
+        if track.contains("music") && !normalizedQuery.contains("music") {
+            score -= 18
+        }
+
+        return max(score, 0)
+    }
+
+    private func fieldScore(
+        query: String,
+        value: String,
+        exact: Int,
+        startsWith: Int,
+        includes: Int
+    ) -> Int {
+        if value.isEmpty {
+            return 0
+        }
+
+        if value == query {
+            return exact
+        }
+
+        if value.hasPrefix(query) {
+            return startsWith
+        }
+
+        if value.contains(query) {
+            return includes
+        }
+
+        return 0
+    }
+
+    private func normalizeForMatch(_ value: String?) -> String {
+        guard let value else {
+            return ""
+        }
+
+        return value
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "ё", with: "е")
+            .replacingOccurrences(of: #"[^\p{L}\p{N}\s]+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+    }
+
+    private func parseAppIconFromAppPage(_ appURL: String) throws -> String? {
+        guard let url = URL(string: appURL) else {
+            throw AppStoreIconError.invalidAppURL
+        }
+
+        do {
+            let (data, _) = try fetchURL(url, userAgent: Self.appStoreUserAgent)
+            guard let html = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+
+            let candidates = collectMzstaticIconCandidates(from: html)
+            return pickBestIconCandidate(candidates)
+        } catch {
+            return nil
+        }
+    }
+
+    private func collectMzstaticIconCandidates(from html: String) -> [String] {
+        var candidates = Set<String>()
+
+        for value in captureMatches(
+            pattern: #"<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["'][^>]*>"#,
+            in: html
+        ) {
+            candidates.insert(value)
+        }
+
+        for rawJSON in captureMatches(
+            pattern: #"<script[^>]+type=["']application/ld\+json["'][^>]*>([\s\S]*?)</script>"#,
+            in: html
+        ) {
+            collectJSONLDImageCandidates(from: rawJSON, into: &candidates)
+        }
+
+        for value in captureMatches(
+            pattern: #"https?://[^"' )]+mzstatic[^"' )]+"#,
+            in: html,
+            captureGroup: 0
+        ) {
+            candidates.insert(value)
+        }
+
+        return candidates
+            .filter { $0.contains("mzstatic.com") }
+            .map { $0.replacingOccurrences(of: "\\/", with: "/") }
+    }
+
+    private func collectJSONLDImageCandidates(from rawJSON: String, into candidates: inout Set<String>) {
+        guard let data = rawJSON.data(using: .utf8),
+              let parsed = try? JSONSerialization.jsonObject(with: data) else {
+            return
+        }
+
+        collectJSONLDImageCandidates(from: parsed, into: &candidates)
+    }
+
+    private func collectJSONLDImageCandidates(from value: Any, into candidates: inout Set<String>) {
+        if let payload = value as? [String: Any] {
+            if let image = payload["image"] as? String {
+                candidates.insert(image)
+            } else if let images = payload["image"] as? [Any] {
+                for image in images {
+                    collectJSONLDImageCandidates(from: image, into: &candidates)
+                }
+            } else if let imageObject = payload["image"] {
+                collectJSONLDImageCandidates(from: imageObject, into: &candidates)
+            }
+
+            for nestedValue in payload.values {
+                if nestedValue is [String: Any] || nestedValue is [Any] {
+                    collectJSONLDImageCandidates(from: nestedValue, into: &candidates)
+                }
+            }
+            return
+        }
+
+        if let values = value as? [Any] {
+            for nestedValue in values {
+                collectJSONLDImageCandidates(from: nestedValue, into: &candidates)
+            }
+        }
+    }
+
+    private func pickBestIconCandidate(_ candidates: [String]) -> String? {
+        guard !candidates.isEmpty else {
+            return nil
+        }
+
+        let sorted = candidates
+            .map { (url: $0, score: appStoreIconScore($0)) }
+            .sorted { $0.score > $1.score }
+
+        return normalizeMzstaticIconSize(sorted.first?.url)
+    }
+
+    private func appStoreIconScore(_ url: String) -> Double {
+        var score = 0.0
+        let lower = url.lowercased()
+
+        if lower.contains("400x400") {
+            score += 10
+        }
+
+        if lower.contains(".webp") {
+            score += 4
+        } else if lower.contains(".png") {
+            score += 3
+        }
+
+        if lower.contains("/image/thumb/") {
+            score += 2
+        }
+
+        if let size = firstCapture(pattern: #"(\d{2,4})x(\d{2,4})bb"#, in: lower),
+           let width = Double(size) {
+            score += width / 100
+        }
+
+        return score
+    }
+
+    private func normalizeMzstaticIconSize(_ url: String?) -> String? {
+        guard let url else {
+            return nil
+        }
+
+        return url.replacingOccurrences(
+            of: #"/(?:100|120|180|512)x(?:100|120|180|512)bb(?:-\d+)?(?=\.)"#,
+            with: "/400x400bb-75",
+            options: .regularExpression
+        )
     }
 
     private func parseRequest(from data: Data) -> HTTPRequest? {
@@ -893,6 +1254,91 @@ final class ProductionWebServer {
         }
 
         return path
+    }
+
+    private func queryParameter(_ name: String, from rawPath: String) -> String? {
+        let absolutePath = rawPath.hasPrefix("/")
+            ? "http://localhost\(rawPath)"
+            : rawPath
+        guard let components = URLComponents(string: absolutePath) else {
+            return nil
+        }
+
+        return components.queryItems?.first { $0.name == name }?.value
+    }
+
+    private func fetchURL(_ url: URL, userAgent: String?) throws -> (Data, HTTPURLResponse) {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        if let userAgent {
+            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        let resultBox = DownloadResultBox()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 8
+        configuration.timeoutIntervalForResource = 12
+        let session = URLSession(configuration: configuration)
+
+        let task = session.dataTask(with: request) { data, response, error in
+            defer { semaphore.signal() }
+
+            if let error {
+                resultBox.store(.failure(error))
+                return
+            }
+
+            guard let data, let response else {
+                resultBox.store(.failure(AppStoreIconError.networkFailed))
+                return
+            }
+
+            resultBox.store(.success((data, response)))
+        }
+        task.resume()
+        semaphore.wait()
+        session.invalidateAndCancel()
+
+        guard let result = resultBox.load() else {
+            throw AppStoreIconError.networkFailed
+        }
+
+        let (data, response) = try result.get()
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AppStoreIconError.invalidResponse
+        }
+
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw AppStoreIconError.networkFailed
+        }
+
+        return (data, httpResponse)
+    }
+
+    private func captureMatches(
+        pattern: String,
+        in text: String,
+        captureGroup: Int = 1
+    ) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return []
+        }
+
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.matches(in: text, range: range).compactMap { match in
+            guard match.numberOfRanges > captureGroup,
+                  let matchRange = Range(match.range(at: captureGroup), in: text) else {
+                return nil
+            }
+
+            return String(text[matchRange])
+        }
+    }
+
+    private func firstCapture(pattern: String, in text: String, captureGroup: Int = 1) -> String? {
+        captureMatches(pattern: pattern, in: text, captureGroup: captureGroup).first
     }
 
     private func resolveRuntimeFileURL(
