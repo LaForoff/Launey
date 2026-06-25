@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-readonly EXPECTED_VERSION="0.1.2"
+readonly EXPECTED_VERSION="0.1.3"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly RELEASE_DIRECTORY="${REPOSITORY_ROOT}/dist-release"

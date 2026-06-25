@@ -56,6 +56,9 @@ import './SettingsWindow.css'
 
 export type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about' | 'updates'
 
+// Temporarily hidden until native macOS Settings window is implemented.
+const SHOW_UPDATES_SECTION = false
+
 interface SettingsSliderProps {
   ariaLabel: string
   value: number
@@ -80,17 +83,21 @@ interface SettingsWindowProps {
   onImport: (file: LauneyExportFile) => Promise<void>
 }
 
-const SIDEBAR_ITEMS: Array<{
+type SidebarItem = {
   id: SettingsSection
   label: string
   icon: (props: { size?: number; className?: string }) => ReactElement
-}> = [
+}
+
+const BASE_SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'sync', label: 'Синхронизация', icon: (props) => <ArrowsClockwise {...props} weight="fill" /> },
   { id: 'appearance', label: 'Оформление', icon: (props) => <PaintBrushBroad {...props} weight="fill" /> },
   { id: 'weather', label: 'Погода', icon: (props) => <CloudSun {...props} weight="fill" /> },
   { id: 'about', label: 'О приложении', icon: (props) => <Info {...props} weight="fill" /> },
   { id: 'updates', label: 'Обновления', icon: (props) => <ArrowClockwise {...props} weight="fill" /> },
 ]
+
+const SIDEBAR_ITEMS = BASE_SIDEBAR_ITEMS.filter(({ id }) => SHOW_UPDATES_SECTION || id !== 'updates')
 
 export function SettingsWindow({
   isOpen,
@@ -185,8 +192,9 @@ function SettingsWindowContent({
 
   useEffect(() => {
     if (requestedSection) {
-      setActiveSection(requestedSection)
-      setShouldAnimateAboutLogo(requestedSection === 'about')
+      const nextSection = !SHOW_UPDATES_SECTION && requestedSection === 'updates' ? 'about' : requestedSection
+      setActiveSection(nextSection)
+      setShouldAnimateAboutLogo(nextSection === 'about')
     }
   }, [requestedSection])
 
@@ -275,7 +283,7 @@ function SettingsWindowContent({
           {activeSection === 'about' ? (
             <AboutSection animateLogo={shouldAnimateAboutLogo} />
           ) : null}
-          {activeSection === 'updates' ? (
+          {SHOW_UPDATES_SECTION && activeSection === 'updates' ? (
             <UpdatesSection
               settings={draftSettings}
               onChangeSettings={onDraftSettingsChange}
