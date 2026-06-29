@@ -39,7 +39,7 @@
 
 .launey-switch[aria-checked='true'] .launey-switch-thumb {
   background: #fff;
-  transform: translateX(14px);
+  transform: translateX(12px);
 }
 
 .launey-switch:focus-visible {

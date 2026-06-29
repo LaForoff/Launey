@@ -396,6 +396,42 @@ final class ProductionWebServer {
                 }
             }
 
+            if requestedPath == "/api/updates/check" {
+                guard request.method == "POST" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                Task { @MainActor in
+                    UpdateManager.shared.checkForUpdates()
+                }
+
+                return makeJSONResponse(
+                    status: 200,
+                    reason: "OK",
+                    body: ["ok": "true"]
+                )
+            }
+
+            if requestedPath == "/api/updates/status" {
+                guard request.method == "GET" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeJSONResponse(
+                    status: 200,
+                    reason: "OK",
+                    body: UpdateManager.updateCheckStatus()
+                )
+            }
+
             return makeJSONResponse(
                 status: 501,
                 reason: "Not Implemented",

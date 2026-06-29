@@ -1,4 +1,5 @@
 import {
+  Children,
   useEffect,
   useMemo,
   useRef,
@@ -6,21 +7,22 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactElement,
+  type ReactNode,
+  type UIEvent as ReactUIEvent,
 } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  ArrowClockwise,
   ArrowsClockwise,
-  CloudSun,
   DownloadSimple,
-  Info,
-  PaintBrushBroad,
   UploadSimple,
   X,
 } from '@phosphor-icons/react'
 import logo from '../../assets/logo.png'
-import logoLauney from '../../assets/logo-launey.png'
+import sidebarAboutIcon from '../../assets/settings-sidebar/about.png'
+import sidebarSyncIcon from '../../assets/settings-sidebar/sync.png'
+import sidebarThemeIcon from '../../assets/settings-sidebar/theme.png'
+import sidebarUpdateIcon from '../../assets/settings-sidebar/update.png'
+import sidebarWeatherIcon from '../../assets/settings-sidebar/weather.png'
 import themeDark from '../../assets/theme-dark.jpg'
 import themeLight from '../../assets/theme-light.jpg'
 import themeSystem from '../../assets/theme-system.jpg'
@@ -32,13 +34,11 @@ import { formatDateTime } from '../../lib/formatBuildDate'
 import type { LauneyExportFile } from '../../lib/launeySync'
 import {
   CURRENT_RELEASE,
-  compareVersions,
   downloadUpdateAsset,
   getCurrentReleaseDetails,
   getStoredCurrentReleaseDetails,
-  getStoredUpdateCheck,
-  githubUpdateProvider,
-  storeUpdateCheck,
+  requestNativeUpdateCheck,
+  requestNativeUpdateStatus,
   type UpdateRelease,
 } from '../../lib/updateService'
 import { searchWeatherCities, type WeatherCitySuggestion } from '../../lib/weatherApi'
@@ -50,14 +50,15 @@ import {
   getCenteredModalAnimation,
   getModalBackdropAnimation,
 } from './modalMotion'
-import { UpdateCard, type UpdateCardVisualState } from './UpdateCard'
+import { Switch } from '../ui/Switch'
 import { UpdateReleaseModalSurface } from './UpdateAvailableModal'
 import './SettingsWindow.css'
 
 export type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about' | 'updates'
 
-// Temporarily hidden until native macOS Settings window is implemented.
-const SHOW_UPDATES_SECTION = false
+const SHOW_UPDATES_SECTION = true
+const UPDATE_CHECK_STATUS_POLL_INTERVAL_MS = 700
+const UPDATE_CHECK_STATUS_TIMEOUT_MS = 120_000
 
 interface SettingsSliderProps {
   ariaLabel: string
@@ -86,15 +87,15 @@ interface SettingsWindowProps {
 type SidebarItem = {
   id: SettingsSection
   label: string
-  icon: (props: { size?: number; className?: string }) => ReactElement
+  icon: string
 }
 
 const BASE_SIDEBAR_ITEMS: SidebarItem[] = [
-  { id: 'sync', label: 'Синхронизация', icon: (props) => <ArrowsClockwise {...props} weight="fill" /> },
-  { id: 'appearance', label: 'Оформление', icon: (props) => <PaintBrushBroad {...props} weight="fill" /> },
-  { id: 'weather', label: 'Погода', icon: (props) => <CloudSun {...props} weight="fill" /> },
-  { id: 'about', label: 'О приложении', icon: (props) => <Info {...props} weight="fill" /> },
-  { id: 'updates', label: 'Обновления', icon: (props) => <ArrowClockwise {...props} weight="fill" /> },
+  { id: 'sync', label: 'Синхронизация', icon: sidebarSyncIcon },
+  { id: 'appearance', label: 'Оформление', icon: sidebarThemeIcon },
+  { id: 'weather', label: 'Погода', icon: sidebarWeatherIcon },
+  { id: 'updates', label: 'Обновления', icon: sidebarUpdateIcon },
+  { id: 'about', label: 'О приложении', icon: sidebarAboutIcon },
 ]
 
 const SIDEBAR_ITEMS = BASE_SIDEBAR_ITEMS.filter(({ id }) => SHOW_UPDATES_SECTION || id !== 'updates')
@@ -221,7 +222,13 @@ function SettingsWindowContent({
       onPointerDown={handleBackdropPointerDown}
     >
       <motion.section
-        className={isPreviewingWallpaper ? 'settings-window is-previewing' : 'settings-window'}
+        className={[
+          'settings-window',
+          `settings-window-section-${activeSection}`,
+          isPreviewingWallpaper ? 'is-previewing' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         aria-label="Настройки"
         {...getCenteredModalAnimation(shouldReduceMotion)}
         transition={{ duration: shouldReduceMotion ? 0.18 : MODAL_DURATION, ease: MODAL_EASE }}
@@ -229,7 +236,7 @@ function SettingsWindowContent({
         <aside className="settings-sidebar">
           <div className="settings-sidebar-title">Настройки</div>
           <nav className="settings-sidebar-nav" aria-label="Разделы настроек">
-            {SIDEBAR_ITEMS.map(({ id, label, icon: Icon }) => (
+            {SIDEBAR_ITEMS.map(({ id, label, icon }) => (
               <button
                 key={id}
                 type="button"
@@ -237,7 +244,7 @@ function SettingsWindowContent({
                 onClick={() => handleSectionChange(id)}
               >
                 <span className="settings-sidebar-icon">
-                  <Icon size={15} />
+                  <img src={icon} alt="" aria-hidden="true" />
                 </span>
                 <span>{label}</span>
               </button>
@@ -309,6 +316,40 @@ function SettingsWindowContent({
   )
 }
 
+function SettingsSectionShell({
+  className = '',
+  children,
+}: {
+  className?: string
+  children: ReactNode
+}) {
+  const [isScrolled, setIsScrolled] = useState(false)
+  const childItems = Children.toArray(children)
+  const [header, ...content] = childItems
+
+  function handleScroll(event: ReactUIEvent<HTMLDivElement>) {
+    const nextIsScrolled = event.currentTarget.scrollTop > 1
+    setIsScrolled((current) => (current === nextIsScrolled ? current : nextIsScrolled))
+  }
+
+  return (
+    <div
+      className={[
+        'settings-section',
+        className,
+        isScrolled ? 'is-scrolled' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {header}
+      <div className="settings-section-scroll" onScroll={handleScroll}>
+        {content}
+      </div>
+    </div>
+  )
+}
+
 interface SyncSectionProps {
   syncMeta: SyncMeta
   onNotify: (type: 'warning' | 'error', text: string) => void
@@ -374,20 +415,19 @@ function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }
 
   return (
     <>
-      <div className="settings-section">
+      <SettingsSectionShell>
         <header className="settings-section-header">
           <h2>Синхронизация</h2>
         </header>
 
-        <div className="settings-info-card">
-          <Info size={14} weight="fill" />
+        <div className="settings-info-card settings-hero-card">
+          <img src={sidebarSyncIcon} alt="" aria-hidden="true" />
           <p>
-            Сохраняйте и переносите свои пространства, папки и URL между устройствами без необходимости
-            настраивать всё заново.
+            Сохраняйте и переносите свои пространства, папки и URL между устройствами.
           </p>
         </div>
 
-        <div className="settings-stack">
+        <div className="settings-stack settings-sync-stack">
           <article className="settings-card settings-card-split">
             <div className="settings-card-copy">
               <h3>Экспорт</h3>
@@ -430,7 +470,7 @@ function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }
             </label>
           </article>
         </div>
-      </div>
+      </SettingsSectionShell>
       <AnimatePresence>
         {pendingFile ? (
         <motion.div
@@ -494,16 +534,15 @@ function AppearanceSection({
   onPreviewEnd,
 }: AppearanceSectionProps) {
   return (
-    <div className="settings-section settings-section-appearance">
+    <SettingsSectionShell className="settings-section-appearance">
       <header className="settings-section-header">
         <h2>Оформление</h2>
       </header>
 
-      <div className="settings-info-card">
-        <Info size={14} weight="fill" />
+      <div className="settings-info-card settings-hero-card">
+        <img src={sidebarThemeIcon} alt="" aria-hidden="true" />
         <p>
-          Создайте собственный стиль Launey, настраивая обои, прозрачность, эффекты и внешний вид
-          элементов интерфейса.
+          Настраивайте внешний вид интерфейса в соответствии со своими предпочтениями.
         </p>
       </div>
 
@@ -575,7 +614,7 @@ function AppearanceSection({
           />
         </div>
       </article>
-    </div>
+    </SettingsSectionShell>
   )
 }
 
@@ -733,14 +772,14 @@ function WeatherSection({ weatherLocation, onChange }: WeatherSectionProps) {
   }
 
   return (
-    <div className="settings-section settings-section-weather">
+    <SettingsSectionShell className="settings-section-weather">
       <header className="settings-section-header">
         <h2>Погода</h2>
       </header>
 
-      <div className="settings-info-card">
-        <Info size={14} weight="fill" />
-        <p>Следите за актуальной погодой и температурой прямо на стартовом экране Launey.</p>
+      <div className="settings-info-card settings-hero-card">
+        <img src={sidebarWeatherIcon} alt="" aria-hidden="true" />
+        <p>Следите за погодой и температурой прямо на стартовом экране.</p>
       </div>
 
       <article className="settings-card">
@@ -783,13 +822,13 @@ function WeatherSection({ weatherLocation, onChange }: WeatherSectionProps) {
         </label>
       </article>
 
-    </div>
+    </SettingsSectionShell>
   )
 }
 
 function AboutSection({ animateLogo }: { animateLogo: boolean }) {
   return (
-    <div className="settings-section settings-section-about">
+    <SettingsSectionShell className="settings-section-about">
       <header className="settings-section-header">
         <h2>О приложении</h2>
       </header>
@@ -820,8 +859,30 @@ function AboutSection({ animateLogo }: { animateLogo: boolean }) {
           <img src={logo} alt="designby4roff" />
         </a>
       </div>
-    </div>
+    </SettingsSectionShell>
   )
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function waitForNativeUpdateCheckToFinish(shouldCancel: () => boolean) {
+  const startedAt = Date.now()
+
+  while (!shouldCancel() && Date.now() - startedAt < UPDATE_CHECK_STATUS_TIMEOUT_MS) {
+    await delay(UPDATE_CHECK_STATUS_POLL_INTERVAL_MS)
+
+    if (shouldCancel()) {
+      return
+    }
+
+    const status = await requestNativeUpdateStatus()
+
+    if (!status.checking) {
+      return
+    }
+  }
 }
 
 interface UpdatesSectionProps {
@@ -835,20 +896,13 @@ interface UpdatesSectionProps {
 function UpdatesSection({
   settings,
   onChangeSettings,
-  onShowReleaseNotes,
   onNotify,
   onNotifySuccess,
 }: UpdatesSectionProps) {
-  const storedUpdateCheck = useMemo(() => getStoredUpdateCheck(), [])
   const storedCurrentRelease = useMemo(() => getStoredCurrentReleaseDetails(), [])
-  const [cardState, setCardState] = useState<UpdateCardVisualState>(() =>
-    getUpdateCardState(APP_VERSION, storedUpdateCheck?.release),
-  )
-  const [release, setRelease] = useState<UpdateRelease>(storedUpdateCheck?.release ?? CURRENT_RELEASE)
   const [currentRelease, setCurrentRelease] = useState<UpdateRelease>(storedCurrentRelease ?? CURRENT_RELEASE)
-  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(storedUpdateCheck?.checkedAt ?? null)
   const [isChecking, setIsChecking] = useState(false)
-  const currentVersion = APP_VERSION
+  const updateCheckRunRef = useRef(0)
 
   useEffect(() => {
     let isCancelled = false
@@ -870,103 +924,98 @@ function UpdatesSection({
     }
   }, [])
 
-  async function handleCheck() {
+  useEffect(() => {
+    return () => {
+      updateCheckRunRef.current += 1
+    }
+  }, [])
+
+  async function handleCheckNow() {
     if (isChecking) {
       return
     }
 
+    const runId = updateCheckRunRef.current + 1
+    updateCheckRunRef.current = runId
     setIsChecking(true)
+    onNotifySuccess('Launey начал поиск новой версии')
 
     try {
-      const nextRelease = await githubUpdateProvider.checkForUpdates()
-      const nextCheckedAt = formatUpdateCheckDate(new Date())
-      const nextCardState = getUpdateCardState(currentVersion, nextRelease)
-
-      setRelease(nextRelease)
-      setLastCheckedAt(nextCheckedAt)
-      setCardState(nextCardState)
-
-      if (nextCardState === 'latest') {
-        onNotifySuccess('Установлена актуальная версия Launey')
-      }
-
-      storeUpdateCheck({
-        checkedAt: nextCheckedAt,
-        release: nextRelease,
-      })
+      await requestNativeUpdateCheck()
+      await waitForNativeUpdateCheckToFinish(() => updateCheckRunRef.current !== runId)
     } catch (error) {
-      console.error('[updates] check failed', error)
-      onNotify('error', 'Не удалось проверить наличие обновлений')
+      console.error('[updates] native check failed', error)
+      onNotify('error', 'Не удалось открыть проверку обновлений')
     } finally {
-      setIsChecking(false)
-    }
-  }
-
-  function handleInstall() {
-    if (!release.downloadUrl) {
-      return
-    }
-
-    try {
-      downloadUpdateAsset(release)
-      onNotifySuccess('Началось скачивание обновления')
-    } catch (error) {
-      console.error('[updates] download failed', error)
-      onNotify('error', 'Не удалось скачать обновление')
+      if (updateCheckRunRef.current === runId) {
+        setIsChecking(false)
+      }
     }
   }
 
   return (
-    <div className="settings-section settings-section-updates">
+    <SettingsSectionShell className="settings-section-updates">
       <header className="settings-section-header">
         <h2>Обновления</h2>
       </header>
 
-      <div className="settings-info-card">
-        <Info size={14} weight="fill" />
-        <p>
-          Узнавайте о новых версиях, просматривайте список изменений и поддерживайте приложение в
-          актуальном состоянии.
-        </p>
+      <div className="settings-info-card settings-hero-card settings-updates-hero-card">
+        <img src={sidebarUpdateIcon} alt="" aria-hidden="true" />
+        <p>Проверяйте наличие новых версий и устанавливайте последние обновления.</p>
       </div>
 
       <div className="settings-updates-stack">
-        <UpdateCard
-          state={cardState}
-          release={release}
-          lastCheckedAt={lastCheckedAt}
-          checkOnOpen={settings.checkUpdatesOnOpen}
-          isChecking={isChecking}
-          onCheck={() => void handleCheck()}
-          onInstall={handleInstall}
-          onShowChanges={() => onShowReleaseNotes(release)}
-          onToggleCheckOnOpen={() =>
-            onChangeSettings((current) => ({
-              ...current,
-              checkUpdatesOnOpen: !current.checkUpdatesOnOpen,
-            }))
-          }
-        />
+        <article className="settings-card settings-update-card">
+          <div className="settings-update-card-main">
+            <div className="settings-update-copy">
+              <span>Установленная версия</span>
+              <strong>Launey {APP_VERSION}</strong>
+            </div>
+
+            <button
+              type="button"
+              className={
+                isChecking
+                  ? 'settings-inline-button settings-update-check-button is-checking'
+                  : 'settings-inline-button settings-update-check-button'
+              }
+              disabled={isChecking}
+              onClick={() => void handleCheckNow()}
+              aria-label={isChecking ? 'Поиск обновлений' : 'Проверить обновления'}
+            >
+              <ArrowsClockwise size={14} weight="bold" aria-hidden="true" />
+              <span>{isChecking ? 'Поиск обновлений' : 'Проверить обновления'}</span>
+            </button>
+          </div>
+
+          <div className="settings-update-divider" />
+
+          <div className="frame-toggle-row settings-update-toggle">
+            <span>Проверять при открытии</span>
+            <Switch
+              checked={settings.checkUpdatesOnOpen}
+              onChange={() =>
+                onChangeSettings((current) => ({
+                  ...current,
+                  checkUpdatesOnOpen: !current.checkUpdatesOnOpen,
+                }))
+              }
+              ariaLabel="Проверять обновления при открытии"
+            />
+          </div>
+        </article>
 
         <CurrentVersionCard release={currentRelease} />
       </div>
-    </div>
+    </SettingsSectionShell>
   )
 }
 
 function CurrentVersionCard({ release }: { release: UpdateRelease }) {
   return (
     <article className="settings-card settings-current-version-card">
-      <div className="settings-current-version-heading">
-        <img src={logoLauney} alt="" />
-        <div>
-          <span>Текущая версия</span>
-          <strong>Launey {release.version}</strong>
-        </div>
-      </div>
-
       <div className="settings-release-notes">
-        <h3>Об этом обновлении</h3>
+        <h3>В этом обновлении</h3>
         <ReleaseNotesMarkdown
           className="settings-release-notes-content"
           markdown={release.releaseNotesMarkdown}
@@ -1031,34 +1080,6 @@ function ReleaseNotesModal({
       />
     </motion.div>
   )
-}
-
-function formatUpdateCheckDate(date: Date) {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
-}
-
-function getUpdateCardState(currentVersion: string, release?: UpdateRelease | null): UpdateCardVisualState {
-  if (!release) {
-    return 'idle'
-  }
-
-  const compareResult = compareVersions(currentVersion, release.version)
-
-  if (compareResult < 0) {
-    return 'available'
-  }
-
-  if (compareResult === 0) {
-    return 'latest'
-  }
-
-  return 'idle'
 }
 
 function getBackgroundLabel(background: SpaceBackground) {

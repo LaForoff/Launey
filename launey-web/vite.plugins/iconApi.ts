@@ -89,7 +89,9 @@ export function iconApiPlugin(): Plugin {
       !req.url?.startsWith('/api/site-icons') &&
       !req.url?.startsWith('/api/settings') &&
       req.url !== '/api/export' &&
-      req.url !== '/api/import'
+      req.url !== '/api/import' &&
+      req.url !== '/api/updates/check' &&
+      req.url !== '/api/updates/status'
     ) {
       next()
       return
@@ -177,6 +179,17 @@ async function handleIconRequest(
     if (req.method === 'GET' && req.url === '/api/arc-import-spaces') {
       const rawJson = readFileSync(ARC_IMPORT_FILE, 'utf8')
       sendJson(res, 200, JSON.parse(rawJson))
+      return
+    }
+
+    if (req.method === 'POST' && req.url === '/api/updates/check') {
+      console.log('[updates] native Sparkle check is only available in the macOS app')
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    if (req.method === 'GET' && req.url === '/api/updates/status') {
+      sendJson(res, 200, { checking: false })
       return
     }
 

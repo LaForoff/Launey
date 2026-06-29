@@ -293,6 +293,30 @@ export function clearUpdateReminder() {
   window.localStorage.removeItem(UPDATE_REMINDER_STORAGE_KEY)
 }
 
+export async function requestNativeUpdateCheck() {
+  const response = await fetch('/api/updates/check', { method: 'POST' })
+
+  if (!response.ok) {
+    throw new Error('Native update check failed')
+  }
+
+  return response.json() as Promise<{ ok: true }>
+}
+
+export async function requestNativeUpdateStatus() {
+  const response = await fetch('/api/updates/status')
+
+  if (!response.ok) {
+    throw new Error('Native update status failed')
+  }
+
+  const payload = (await response.json()) as { checking?: boolean | string }
+
+  return {
+    checking: payload.checking === true || payload.checking === 'true',
+  }
+}
+
 export function shouldSkipUpdateReminder(version: string) {
   const reminder = getUpdateReminder()
 

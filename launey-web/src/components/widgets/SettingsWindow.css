@@ -3,46 +3,120 @@
 }
 
 .settings-window {
+  --modal-surface-background: rgba(17, 18, 22, 0.96);
+  --modal-surface-blur: none;
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-columns: 185px minmax(0, 1fr);
+  column-gap: 16px;
   width: 715px;
   height: 616px;
   padding: 8px;
   overflow: hidden;
+  background: rgba(17, 18, 22, 0.96);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .settings-window.is-previewing {
   opacity: 0.04;
 }
 
+html[data-theme='light'] .settings-window.settings-window-section-sync {
+  --modal-surface-background: rgba(247, 247, 250, 0.98);
+  --modal-surface-border: rgba(218, 219, 224, 0.78);
+  --modal-card-background: rgba(255, 255, 255, 0.88);
+  --modal-control-background: rgba(255, 255, 255, 0.92);
+  color: rgba(17, 19, 24, 0.94);
+  border-color: var(--modal-surface-border);
+  background: rgba(247, 247, 250, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.46),
+    0 18px 56px rgba(21, 23, 30, 0.14);
+}
+
+html[data-theme='light'] .settings-window.settings-window-section-sync::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.38) 0%,
+    rgba(255, 255, 255, 0.16) 24%,
+    rgba(255, 255, 255, 0) 58%
+  );
+}
+
+html[data-theme='light'] .settings-window.settings-window-section-appearance {
+  --modal-surface-background: rgba(247, 247, 250, 0.98);
+  --modal-surface-border: rgba(218, 219, 224, 0.78);
+  --modal-card-background: rgba(255, 255, 255, 0.88);
+  --modal-control-background: rgba(255, 255, 255, 0.92);
+  color: rgba(17, 19, 24, 0.94);
+  border-color: var(--modal-surface-border);
+  background: rgba(247, 247, 250, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.46),
+    0 18px 56px rgba(21, 23, 30, 0.14);
+}
+
+html[data-theme='light'] .settings-window.settings-window-section-appearance::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.38) 0%,
+    rgba(255, 255, 255, 0.16) 24%,
+    rgba(255, 255, 255, 0) 58%
+  );
+}
+
 .settings-sidebar {
   display: flex;
   flex-direction: column;
-  width: 200px;
+  gap: 20px;
+  width: 185px;
   height: 600px;
-  padding: 16px 12px 12px;
-  border: 1px solid rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.12);
-  border-radius: 22px;
-  background: rgba(var(--modal-sidebar-rgb, 15, 16, 20), 0.82);
+  padding: 16px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(17, 18, 22, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-sidebar {
+  border-color: rgba(231, 232, 236, 0.88);
+  background: rgba(255, 255, 255, 0.72);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 0 24px rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.05);
-  -webkit-backdrop-filter: blur(24px) saturate(0.9);
-  backdrop-filter: blur(24px) saturate(0.9);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 1px 0 rgba(22, 24, 29, 0.02);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-sidebar {
+  border-color: rgba(231, 232, 236, 0.88);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 1px 0 rgba(22, 24, 29, 0.02);
 }
 
 .settings-sidebar-title {
-  padding-left: 6px;
+  padding-left: 4px;
   color: rgba(255, 255, 255, 0.94);
   font-size: 15px;
   line-height: 1.2;
   font-weight: 600;
 }
 
+html[data-theme='light'] .settings-window-section-sync .settings-sidebar-title {
+  color: rgba(18, 20, 25, 0.94);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-sidebar-title {
+  color: rgba(18, 20, 25, 0.94);
+}
+
 .settings-sidebar-nav {
   display: grid;
-  gap: 4px;
-  margin-top: 20px;
+  gap: 6px;
 }
 
 .settings-sidebar-item {
@@ -52,28 +126,76 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  height: 34px;
-  padding: 0 10px 0 6px;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 14px;
-  font-weight: 500;
+  height: 32px;
+  padding: 0 9px 0 6px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13px;
+  font-weight: 600;
   border: 0;
-  border-radius: 11px;
+  border-radius: 12px;
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-sidebar-item {
+  color: rgba(24, 27, 34, 0.86);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-sidebar-item {
+  color: rgba(24, 27, 34, 0.86);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-sidebar-item:hover {
+  background: rgba(20, 24, 32, 0.045);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-sidebar-item:hover {
+  background: rgba(20, 24, 32, 0.045);
 }
 
 .settings-sidebar-item:active {
   background: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.1);
 }
 
+html[data-theme='light'] .settings-window-section-sync .settings-sidebar-item:active {
+  background: rgba(20, 24, 32, 0.075);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-sidebar-item:active {
+  background: rgba(20, 24, 32, 0.075);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-sidebar-item:focus-visible {
+  outline: 2px solid rgba(0, 145, 255, 0.36);
+  outline-offset: 2px;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-sidebar-item:focus-visible {
+  outline: 2px solid rgba(0, 145, 255, 0.36);
+  outline-offset: 2px;
+}
+
 .settings-sidebar-item.is-active {
-  border: 1px solid rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.25);
-  background: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.14);
+  color: rgba(255, 255, 255, 0.96);
+  background: rgba(var(--slider-accent-rgb, 0, 122, 255), 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-sidebar-item.is-active {
+  color: rgba(255, 255, 255, 0.98);
+  background: rgb(0, 145, 255);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.055),
-    0 0 14px rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 1px 2px rgba(0, 102, 204, 0.16);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-sidebar-item.is-active {
+  color: rgba(255, 255, 255, 0.98);
+  background: rgb(0, 145, 255);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 1px 2px rgba(0, 102, 204, 0.16);
 }
 
 .settings-sidebar-icon {
@@ -81,22 +203,73 @@
   place-items: center;
   width: 24px;
   height: 24px;
-  border: 0.5px solid rgba(255, 255, 255, 0.09);
-  border-radius: 7px;
-  background: rgba(var(--modal-control-rgb, 42, 44, 50), 0.84);
-  color: inherit;
+}
+
+.settings-sidebar-icon img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .settings-content {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
   height: 600px;
-  padding: 12px 12px 24px 24px;
+  padding: 12px 12px 24px 0;
+  overflow: hidden;
 }
 
 .settings-window-close {
   appearance: none;
+  z-index: 10;
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-window-close {
+  color: rgba(23, 26, 32, 0.76);
+  border-color: rgba(226, 227, 231, 0.82);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-window-close {
+  color: rgba(23, 26, 32, 0.76);
+  border-color: rgba(226, 227, 231, 0.82);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-window-close:hover {
+  color: rgba(17, 19, 24, 0.9);
+  border-color: rgba(214, 216, 221, 0.92);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-window-close:hover {
+  color: rgba(17, 19, 24, 0.9);
+  border-color: rgba(214, 216, 221, 0.92);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-window-close:active {
+  color: rgba(17, 19, 24, 0.96);
+  border-color: rgba(205, 207, 213, 0.98);
+  background: rgba(239, 240, 243, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-window-close:active {
+  color: rgba(17, 19, 24, 0.96);
+  border-color: rgba(205, 207, 213, 0.98);
+  background: rgba(239, 240, 243, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-window-close:focus-visible {
+  outline-color: rgba(0, 145, 255, 0.36);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-window-close:focus-visible {
+  outline-color: rgba(0, 145, 255, 0.36);
 }
 
 .settings-section {
@@ -104,19 +277,46 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  padding-right: 4px;
+  overflow: hidden;
+}
+
+.settings-section-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.settings-section-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .settings-section-header {
-  min-height: 28px;
-  padding-right: 52px;
+  z-index: 3;
+  width: calc(100% - 52px);
+  min-height: 36px;
+  padding-right: 0;
 }
 
 .settings-section-header h2 {
   margin: 0;
   color: rgba(255, 255, 255, 0.94);
   font-size: 15px;
-  line-height: 28px;
+  line-height: 36px;
   font-weight: 600;
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-section-header h2 {
+  color: rgba(17, 19, 24, 0.94);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-section-header h2 {
+  color: rgba(17, 19, 24, 0.94);
 }
 
 .settings-info-card {
@@ -124,7 +324,7 @@
   grid-template-columns: 14px minmax(0, 1fr);
   align-items: start;
   gap: 10px;
-  margin-top: 24px;
+  margin-top: 0;
   padding: 16px;
   color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
@@ -133,6 +333,20 @@
   border-radius: 18px;
   background: var(--modal-card-background, rgba(36, 38, 44, 0.78));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-info-card {
+  color: rgba(72, 77, 87, 0.88);
+  border-color: rgba(240, 241, 244, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-info-card {
+  color: rgba(72, 77, 87, 0.88);
+  border-color: rgba(240, 241, 244, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
 }
 
 .settings-info-card p {
@@ -144,10 +358,44 @@
   margin-top: 2px;
 }
 
+.settings-hero-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  margin-top: 12px;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+  padding: 8px 16px;
+  text-align: left;
+}
+
+.settings-hero-card img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.settings-hero-card p {
+  box-sizing: border-box;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  padding: 0;
+  line-height: 1.45;
+}
+
+
 .settings-stack {
   display: grid;
   gap: 16px;
-  margin-top: 24px;
+  margin-top: 0;
+}
+
+.settings-sync-stack {
+  gap: 12px;
 }
 
 .settings-card {
@@ -155,6 +403,22 @@
   border-radius: 20px;
   background: var(--modal-card-background, rgba(36, 38, 44, 0.78));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-card {
+  border-color: rgba(240, 241, 244, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 1px 0 rgba(22, 24, 29, 0.018);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-card {
+  border-color: rgba(240, 241, 244, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 1px 0 rgba(22, 24, 29, 0.018);
 }
 
 .settings-card-split {
@@ -172,11 +436,19 @@
   font-weight: 600;
 }
 
+html[data-theme='light'] .settings-window-section-sync .settings-card-copy h3 {
+  color: rgba(17, 19, 24, 0.94);
+}
+
 .settings-card-copy p {
   margin: 0;
   color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
   line-height: 1.45;
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-card-copy p {
+  color: rgba(64, 69, 79, 0.88);
 }
 
 .settings-card-meta {
@@ -187,16 +459,20 @@
   font-weight: 500;
 }
 
+html[data-theme='light'] .settings-window-section-sync .settings-card-meta {
+  color: rgba(132, 137, 146, 0.86);
+}
+
 .settings-inline-button {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   align-self: center;
   min-width: 96px;
-  height: 32px;
-  padding: 0 16px;
+  height: 34px;
+  padding: 0 14px;
   color: rgba(255, 255, 255, 0.92);
   font-size: 13px;
   font-weight: 600;
@@ -207,6 +483,49 @@
   cursor: pointer;
 }
 
+html[data-theme='light'] .settings-window-section-sync .settings-inline-button {
+  color: rgba(17, 19, 24, 0.92);
+  border-color: rgba(226, 227, 231, 0.92);
+  background: rgba(245, 245, 247, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 1px rgba(20, 24, 32, 0.025);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-inline-button {
+  color: rgba(17, 19, 24, 0.92);
+  border-color: rgba(226, 227, 231, 0.92);
+  background: rgba(245, 245, 247, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 1px rgba(20, 24, 32, 0.025);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-inline-button:hover:not(:disabled) {
+  border-color: rgba(214, 216, 221, 0.96);
+  background: rgba(238, 239, 242, 0.94);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-inline-button:hover:not(:disabled) {
+  border-color: rgba(214, 216, 221, 0.96);
+  background: rgba(238, 239, 242, 0.94);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-inline-button:focus-visible {
+  outline: 2px solid rgba(0, 145, 255, 0.36);
+  outline-offset: 2px;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-inline-button:focus-visible {
+  outline: 2px solid rgba(0, 145, 255, 0.36);
+  outline-offset: 2px;
+}
+
+.settings-card-split > .settings-inline-button {
+  align-self: start;
+  margin-top: 0;
+}
+
 .settings-inline-button:disabled {
   opacity: 0.56;
   cursor: default;
@@ -214,6 +533,16 @@
 
 .settings-inline-button:active {
   background: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme='light'] .settings-window-section-sync .settings-inline-button:active:not(:disabled) {
+  border-color: rgba(205, 207, 213, 0.98);
+  background: rgba(230, 231, 235, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-inline-button:active:not(:disabled) {
+  border-color: rgba(205, 207, 213, 0.98);
+  background: rgba(230, 231, 235, 0.96);
 }
 
 .settings-inline-file-button {
@@ -233,7 +562,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 24px;
+  margin-top: 0;
   padding: 16px;
 }
 
@@ -242,6 +571,10 @@
   color: rgba(255, 255, 255, 0.94);
   font-size: 13px;
   font-weight: 600;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-theme-card h3 {
+  color: rgba(17, 19, 24, 0.94);
 }
 
 .settings-theme-options {
@@ -263,6 +596,10 @@
   cursor: pointer;
 }
 
+html[data-theme='light'] .settings-window-section-appearance .settings-theme-option {
+  color: rgba(111, 116, 126, 0.88);
+}
+
 .settings-theme-option img {
   display: block;
   width: 86px;
@@ -278,6 +615,11 @@
     opacity 160ms ease;
 }
 
+html[data-theme='light'] .settings-window-section-appearance .settings-theme-option img {
+  border-color: rgba(224, 226, 232, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
 .settings-theme-option span {
   font-size: 11px;
   line-height: 13px;
@@ -289,6 +631,10 @@
   color: rgba(255, 255, 255, 0.94);
 }
 
+html[data-theme='light'] .settings-window-section-appearance .settings-theme-option.is-selected {
+  color: rgba(17, 19, 24, 0.94);
+}
+
 .settings-theme-option.is-selected img {
   border-color: rgba(255, 255, 255, 0.88);
   opacity: 1;
@@ -297,10 +643,21 @@
     0 0 14px rgba(145, 194, 255, 0.2);
 }
 
+html[data-theme='light'] .settings-window-section-appearance .settings-theme-option.is-selected img {
+  border-color: rgb(0, 145, 255);
+  box-shadow:
+    0 0 0 1px rgba(0, 145, 255, 0.74),
+    0 0 0 3px rgba(0, 145, 255, 0.18);
+}
+
 .settings-theme-option:focus-visible {
   outline: 2px solid rgba(145, 194, 255, 0.7);
   outline-offset: 3px;
   border-radius: 10px;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-theme-option:focus-visible {
+  outline-color: transparent;
 }
 
 .settings-wallpaper-card {
@@ -335,6 +692,11 @@
   font-weight: 500;
 }
 
+html[data-theme='light'] .settings-window-section-appearance .settings-slider-label,
+html[data-theme='light'] .settings-window-section-appearance .settings-slider-value {
+  color: rgba(17, 19, 24, 0.9);
+}
+
 .settings-slider {
   --settings-slider-fill: 0%;
   --slider-fill-opacity: 0.72;
@@ -352,13 +714,27 @@
   user-select: none;
 }
 
+html[data-theme='light'] .settings-window-section-appearance .settings-slider {
+  --slider-fill-opacity: 1;
+  border-color: rgba(238, 239, 242, 0.94);
+  background: rgba(238, 239, 242, 0.96);
+}
+
 .settings-slider:active {
   --slider-fill-opacity: 0.82;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-slider:active {
+  --slider-fill-opacity: 1;
 }
 
 .settings-slider:focus-visible {
   outline: 2px solid rgba(145, 194, 255, 0.7);
   outline-offset: 3px;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-slider:focus-visible {
+  outline-color: rgba(0, 145, 255, 0.36);
 }
 
 .settings-slider-fill {
@@ -369,6 +745,11 @@
   border-radius: 999px;
   background: rgba(var(--slider-accent-rgb, 150, 165, 190), var(--slider-fill-opacity));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-slider-fill {
+  background: rgba(0, 145, 255, var(--slider-fill-opacity));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 .settings-slider-thumb {
@@ -382,6 +763,11 @@
   box-shadow: none;
   background: rgba(255, 255, 255, 0.96);
   pointer-events: none;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-slider-thumb {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 1px 2px rgba(20, 24, 32, 0.14);
 }
 
 .settings-background-copy {
@@ -402,10 +788,18 @@
   text-overflow: ellipsis;
 }
 
+html[data-theme='light'] .settings-window-section-appearance .settings-background-copy strong {
+  color: rgba(17, 19, 24, 0.94);
+}
+
 .settings-field-label {
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 800;
+}
+
+html[data-theme='light'] .settings-window-section-appearance .settings-field-label {
+  color: rgba(96, 101, 112, 0.88);
 }
 
 .settings-section-footer {
@@ -432,7 +826,7 @@
 }
 
 .settings-section-weather .settings-card {
-  margin-top: 24px;
+  margin-top: 0;
   padding: 16px;
 }
 
@@ -563,15 +957,15 @@
 }
 
 .dotted-logo.settings-about-dotted-logo {
-  --dotted-logo-dot-size: 11.5px;
-  --dotted-logo-gap: 6px;
+  --dotted-logo-dot-size: 8.5px;
+  --dotted-logo-gap: 4.6667px;
   margin: 8px 0 10px;
 }
 
 .settings-about-center h3 {
   margin: 0;
   color: rgba(255, 255, 255, 0.95);
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
 }
 
@@ -627,19 +1021,15 @@
 
 .settings-updates-stack {
   display: grid;
-  grid-template-rows: 126px minmax(0, 1fr);
-  flex: 1;
-  gap: 16px;
-  min-height: 0;
-  margin-top: 16px;
-  overflow: hidden;
+  gap: 12px;
+  margin-top: 0;
 }
 
 .settings-update-card {
   display: grid;
-  grid-template-rows: 66px 1px 58px;
-  height: 126px;
-  padding: 0 16px;
+  grid-template-rows: 58px 1px 48px;
+  margin-bottom: 6px;
+  padding: 6px 16px;
   overflow: hidden;
 }
 
@@ -665,7 +1055,7 @@
 .settings-update-copy {
   display: grid;
   min-width: 0;
-  gap: 7px;
+  gap: 6px;
 }
 
 .settings-update-status {
@@ -703,7 +1093,7 @@
 
 .settings-update-copy strong {
   color: rgba(255, 255, 255, 0.94);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -721,6 +1111,14 @@
 
 .settings-update-actions .settings-inline-button {
   min-width: 96px;
+}
+
+.settings-update-check-button {
+  min-width: 164px;
+}
+
+.settings-update-check-button.is-checking svg {
+  animation: settings-update-loader-spin 680ms linear infinite;
 }
 
 .settings-update-loader {
@@ -767,21 +1165,18 @@
 }
 
 .settings-current-version-card {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: block;
   min-height: 0;
   padding: 16px;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.settings-current-version-heading,
 .settings-release-modal-version {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
-.settings-current-version-heading img,
 .settings-release-modal-version img {
   width: 34px;
   height: 34px;
@@ -789,18 +1184,6 @@
   object-fit: contain;
 }
 
-.settings-current-version-heading div {
-  display: grid;
-  gap: 5px;
-}
-
-.settings-current-version-heading span {
-  color: rgba(255, 255, 255, 0.48);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.settings-current-version-heading strong,
 .settings-release-modal-version strong {
   color: rgba(255, 255, 255, 0.94);
   font-size: 15px;
@@ -811,10 +1194,14 @@
   margin-top: 24px;
 }
 
+.settings-current-version-card .settings-release-notes {
+  margin-top: 0;
+}
+
 .settings-release-notes h3 {
   margin: 0 0 12px;
   color: rgba(255, 255, 255, 0.94);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -823,18 +1210,8 @@
   font-size: 11px;
 }
 
-.settings-current-version-card .settings-release-notes {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-}
-
 .settings-current-version-card .settings-release-notes-content {
-  min-height: 0;
-  padding-right: 8px;
-  font-size: 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  font-size: 13px;
 }
 
 .settings-release-modal {
@@ -886,6 +1263,346 @@
 
 .settings-release-modal .settings-release-notes-content {
   font-size: 13px;
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) {
+  --modal-surface-background: rgba(247, 247, 250, 0.98);
+  --modal-surface-border: rgba(218, 219, 224, 0.78);
+  --modal-card-background: rgba(255, 255, 255, 0.88);
+  --modal-control-background: rgba(255, 255, 255, 0.92);
+  color: rgba(17, 19, 24, 0.94);
+  border-color: var(--modal-surface-border);
+  background: rgba(247, 247, 250, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.46),
+    0 18px 56px rgba(21, 23, 30, 0.14);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+)::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.38) 0%,
+    rgba(255, 255, 255, 0.16) 24%,
+    rgba(255, 255, 255, 0) 58%
+  );
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-sidebar {
+  border-color: rgba(231, 232, 236, 0.88);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 1px 0 rgba(22, 24, 29, 0.02);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-sidebar-title,
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-section-header h2 {
+  color: rgba(18, 20, 25, 0.94);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-sidebar-item {
+  color: rgba(24, 27, 34, 0.86);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-sidebar-item:hover {
+  background: rgba(20, 24, 32, 0.045);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-sidebar-item:active {
+  background: rgba(20, 24, 32, 0.075);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-sidebar-item:focus-visible {
+  outline: 2px solid rgba(0, 145, 255, 0.36);
+  outline-offset: 2px;
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-sidebar-item.is-active {
+  color: rgba(255, 255, 255, 0.98);
+  background: rgb(0, 145, 255);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 1px 2px rgba(0, 102, 204, 0.16);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-window-close {
+  color: rgba(23, 26, 32, 0.76);
+  border-color: rgba(226, 227, 231, 0.82);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-window-close:hover {
+  color: rgba(17, 19, 24, 0.9);
+  border-color: rgba(214, 216, 221, 0.92);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-window-close:active {
+  color: rgba(17, 19, 24, 0.96);
+  border-color: rgba(205, 207, 213, 0.98);
+  background: rgba(239, 240, 243, 0.96);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates,
+  .settings-window-section-about
+) .settings-window-close:focus-visible {
+  outline-color: rgba(0, 145, 255, 0.36);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates
+) .settings-info-card,
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates
+) .settings-card {
+  color: rgba(72, 77, 87, 0.88);
+  border-color: rgba(240, 241, 244, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 1px 0 rgba(22, 24, 29, 0.018);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates
+) .settings-info-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+html[data-theme='light'] .settings-window:is(
+  .settings-window-section-weather,
+  .settings-window-section-updates
+) .settings-field-label,
+html[data-theme='light'] .settings-window-section-updates .settings-update-copy span {
+  color: rgba(96, 101, 112, 0.88);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-text-input {
+  color: rgba(17, 19, 24, 0.94);
+  border-color: rgba(226, 227, 231, 0.92);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-text-input:focus {
+  border-color: rgba(0, 145, 255, 0.74);
+  outline-color: rgba(0, 145, 255, 0.16);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-text-input::placeholder {
+  color: rgba(132, 137, 146, 0.68);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-city-suggestions {
+  border-color: rgba(226, 227, 231, 0.92);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-city-suggestion {
+  color: rgba(17, 19, 24, 0.9);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-city-suggestion:hover {
+  background: rgba(20, 24, 32, 0.045);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-city-suggestion:active {
+  background: rgba(20, 24, 32, 0.075);
+}
+
+html[data-theme='light'] .settings-window-section-weather .settings-city-loading {
+  color: rgba(132, 137, 146, 0.82);
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-update-copy strong,
+html[data-theme='light'] .settings-window-section-updates .settings-release-notes h3 {
+  color: rgba(17, 19, 24, 0.94);
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-inline-button {
+  color: rgba(17, 19, 24, 0.92);
+  border-color: rgba(226, 227, 231, 0.92);
+  background: rgba(245, 245, 247, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 1px rgba(20, 24, 32, 0.025);
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-inline-button:hover:not(:disabled) {
+  border-color: rgba(214, 216, 221, 0.96);
+  background: rgba(238, 239, 242, 0.94);
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-inline-button:active:not(:disabled) {
+  border-color: rgba(205, 207, 213, 0.98);
+  background: rgba(230, 231, 235, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-inline-button:focus-visible {
+  outline: 2px solid rgba(0, 145, 255, 0.36);
+  outline-offset: 2px;
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-update-loader {
+  border-color: rgba(17, 19, 24, 0.18);
+  border-top-color: rgba(17, 19, 24, 0.9);
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-update-divider {
+  background: rgba(226, 227, 231, 0.78);
+}
+
+html[data-theme='light'] .settings-window-section-updates .settings-update-toggle {
+  color: rgba(17, 19, 24, 0.9);
+  background: transparent;
+}
+
+html[data-theme='light'] .settings-window-section-updates .launey-switch {
+  border-color: rgba(226, 227, 231, 0.92);
+  background: rgba(238, 239, 242, 0.96);
+}
+
+html[data-theme='light'] .settings-window-section-updates .launey-switch[aria-checked='true'] {
+  border-color: transparent;
+  background: rgb(0, 145, 255);
+}
+
+html[data-theme='light'] .settings-window-section-updates .launey-switch-thumb {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 1px 3px rgba(20, 24, 32, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+html[data-theme='light'] .settings-window-section-updates .launey-switch:focus-visible {
+  outline-color: rgba(0, 145, 255, 0.36);
+}
+
+html[data-theme='light'] .settings-window-section-updates .release-notes-markdown {
+  color: rgba(64, 69, 79, 0.88);
+}
+
+html[data-theme='light'] .settings-window-section-updates .release-notes-markdown-heading,
+html[data-theme='light'] .settings-window-section-updates .release-notes-markdown strong {
+  color: rgba(17, 19, 24, 0.92);
+}
+
+html[data-theme='light'] .settings-window-section-updates .release-notes-markdown em {
+  color: rgba(72, 77, 87, 0.86);
+}
+
+html[data-theme='light'] .settings-window-section-updates .release-notes-markdown code {
+  color: rgba(17, 19, 24, 0.9);
+  border-color: rgba(226, 227, 231, 0.92);
+  background: rgba(238, 239, 242, 0.82);
+}
+
+html[data-theme='light'] .settings-window-section-updates .release-notes-markdown a {
+  color: rgba(0, 111, 196, 0.9);
+  text-decoration-color: rgba(0, 111, 196, 0.26);
+}
+
+html[data-theme='light'] .settings-window-section-updates .release-notes-markdown a:hover {
+  color: rgba(0, 92, 170, 0.96);
+  text-decoration-color: rgba(0, 92, 170, 0.38);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-dotted-logo .dotted-logo-dot {
+  background: rgba(17, 19, 24, 1);
+  box-shadow: 0 0 0 rgba(17, 19, 24, 0);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-dotted-logo .dotted-logo-dot.is-visible {
+  background: rgba(17, 19, 24, 0.92);
+  box-shadow: 0 0 12px rgba(17, 19, 24, 0.08) !important;
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-center h3 {
+  color: rgba(17, 19, 24, 0.95);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-version {
+  color: rgba(132, 137, 146, 0.86);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-description {
+  color: rgba(132, 137, 146, 0.82);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-footer a:focus-visible {
+  outline-color: rgba(0, 145, 255, 0.36);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-footer a {
+  color: rgba(132, 137, 146, 0.82);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-footer img {
+  filter: opacity(0.28);
+}
+
+html[data-theme='light'] .settings-window-section-about .settings-about-footer a:hover img,
+html[data-theme='light'] .settings-window-section-about .settings-about-footer a:focus-visible img {
+  filter: opacity(0.48);
 }
 
 @media (max-width: 760px) {

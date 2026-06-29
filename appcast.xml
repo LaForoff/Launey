@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Launey Updates</title>
+    <title>Launey 0.1.4</title>
     <link>https://raw.githubusercontent.com/LaForoff/Launey/main/appcast.xml</link>
     <description>Launey app updates</description>
     <language>ru</language>
     <item>
       <title>Launey 0.1.3</title>
       <enclosure
-        url="https://github.com/LaForoff/Launey/releases/download/v0.1.3/Launey-v0.1.3-macOS.zip"
-        sparkle:shortVersionString="0.1.3"
-        sparkle:version="4"
-        sparkle:edSignature="ppXZszWhmKs4l1J1FsVlH/xFBLterZiyWkigEDc2jN18OzAJSWkcZdoGpShvqj9jBxxuNY/zsnjJ21reJcVoBA=="
-        length="4450366"
+        url="https://github.com/LaForoff/Launey/releases/download/v0.1.4/Launey-v0.1.4-macOS.zip"
+        sparkle:shortVersionString="0.1.4"
+        sparkle:version="5"
+        sparkle:edSignature="9Z1tRo9SrRD1qmDY5r8M69LWGMDKQ06ZcnodVmiLqP5fZ/P1sbTRgzJCaXTnWCy8DCcMehjS7AcPNhBJfqvQBg=="
+        length="6992907"
         type="application/octet-stream"
       />
     </item>
