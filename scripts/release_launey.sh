@@ -49,6 +49,8 @@ readonly RELEASE_DIR="dist-release"
 readonly ZIP_NAME="Launey-v${VERSION}-macOS.zip"
 readonly ZIP_PATH="${RELEASE_DIR}/${ZIP_NAME}"
 readonly GITHUB_ZIP_URL="https://github.com/LaForoff/Launey/releases/download/v${VERSION}/${ZIP_NAME}"
+readonly RELEASE_NOTES_FILE="macos/ReleaseNotes/Launey-v${VERSION}-macOS.md"
+readonly RELEASE_NOTES_URL="https://raw.githubusercontent.com/LaForoff/Launey/main/${RELEASE_NOTES_FILE}"
 
 resolve_developer_dir() {
     local candidate
@@ -86,7 +88,8 @@ for required_path in \
     "${PROJECT_FILE}" \
     "${BUILD_INFO_FILE}" \
     "${PACKAGE_SCRIPT}" \
-    "${APPCAST_FILE}"
+    "${APPCAST_FILE}" \
+    "${RELEASE_NOTES_FILE}"
 do
     if [[ ! -e "${required_path}" ]]; then
         fail "не найден обязательный путь: ${required_path}"
@@ -151,6 +154,8 @@ fi
 log "Обновляю appcast.xml"
 perl -0pi -e "
     s|<title>Launey [^<]+</title>|<title>Launey ${VERSION}</title>|;
+    s|\s*<sparkle:releaseNotesLink>[^<]*</sparkle:releaseNotesLink>||g;
+    s|<item>\s*<title>[^<]+</title>|<item>\n      <title>Launey ${VERSION}</title>\n      <sparkle:releaseNotesLink>${RELEASE_NOTES_URL}</sparkle:releaseNotesLink>|;
     s|url=\"[^\"]*Launey-v[^\"]+-macOS\\.zip\"|url=\"${GITHUB_ZIP_URL}\"|;
     s|sparkle:shortVersionString=\"[^\"]*\"|sparkle:shortVersionString=\"${VERSION}\"|;
     s|sparkle:version=\"[^\"]*\"|sparkle:version=\"${BUILD}\"|;
