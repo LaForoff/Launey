@@ -48,6 +48,9 @@ type GlobalSearchState = {
 }
 
 const GLOBAL_SITE_ICONS_CACHE_TTL_MS = 1000 * 60 * 30
+const MINIMUM_GLOBAL_ICON_SIZE = 64
+const MINIMUM_GLOBAL_ICON_ASPECT_RATIO = 0.75
+const MAXIMUM_GLOBAL_ICON_ASPECT_RATIO = 1.33
 const globalSiteIconsCache = new Map<string, { expiresAt: number; state: GlobalSearchState }>()
 
 interface IconSettingsResult {
@@ -108,6 +111,7 @@ function IconSettingsModalContent({
   const titleId = useId()
   const fileId = useId()
   const [activeTab, setActiveTab] = useState<IconSettingsTab>('appstore')
+  const [searchTitle, setSearchTitle] = useState(title)
   const [country, setCountry] = useState<AppStoreCountry>('us')
   const [searchStateByCountry, setSearchStateByCountry] = useState<
     Record<AppStoreCountry, { status: 'idle' | 'loading' | 'success' | 'empty' | 'error'; results: AppStoreIconResult[] }>
@@ -122,6 +126,8 @@ function IconSettingsModalContent({
     status: 'idle',
     results: [],
   })
+  const [validGlobalResultIds, setValidGlobalResultIds] = useState<Set<string>>(() => new Set())
+  const [rejectedGlobalResultIds, setRejectedGlobalResultIds] = useState<Set<string>>(() => new Set())
   const globalQueryRef = useRef<string>('')
   const [selectedIconUrl, setSelectedIconUrl] = useState<string | undefined>(
     initialIcon && /^https?:\/\//i.test(initialIcon) ? initialIcon : undefined,
@@ -131,10 +137,16 @@ function IconSettingsModalContent({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const requestIdRef = useRef(0)
 
-  const selectedCountryState = searchStateByCountry[country]
-  const hasSelection = Boolean(selectedIconUrl || selectedIconFile)
-  const trimmedTitle = title.trim()
+  const trimmedTitle = searchTitle.trim()
   const trimmedUrl = url.trim()
+  const selectedCountryState =
+    trimmedTitle.length >= 2 ? searchStateByCountry[country] : { status: 'idle' as const, results: [] }
+  const hasSelection = Boolean(selectedIconUrl || selectedIconFile)
+  const visibleGlobalResults = globalState.results.filter((result) => !rejectedGlobalResultIds.has(result.id))
+  const validatedGlobalResults = visibleGlobalResults.filter((result) => validGlobalResultIds.has(result.id))
+  const isValidatingGlobalResults =
+    globalState.status === 'success' &&
+    validGlobalResultIds.size + rejectedGlobalResultIds.size < globalState.results.length
 
   const sortedResults = useMemo(
     () => [...selectedCountryState.results].sort((first, second) => second.score - first.score),
@@ -150,30 +162,27 @@ function IconSettingsModalContent({
   }, [selectedFilePreview])
 
   useEffect(() => {
-    if (activeTab !== 'appstore' || trimmedTitle.length < 2) {
+    if (activeTab !== 'appstore') {
       return
     }
 
-    if (
-      selectedCountryState.status === 'loading' ||
-      selectedCountryState.status === 'success' ||
-      selectedCountryState.status === 'empty'
-    ) {
+    if (trimmedTitle.length < 2) {
+      requestIdRef.current += 1
       return
     }
 
     requestIdRef.current += 1
     const requestId = requestIdRef.current
+    const abortController = new AbortController()
+    const searchTimer = window.setTimeout(() => {
+      setSearchStateByCountry((current) => ({
+        ...current,
+        [country]: { status: 'loading', results: [] },
+      }))
 
-    setSearchStateByCountry((current) => ({
-      ...current,
-      [country]: {
-        ...current[country],
-        status: 'loading',
-      },
-    }))
-
-    void fetch(`/api/app-store-icon?query=${encodeURIComponent(trimmedTitle)}&country=${country}`)
+      void fetch(`/api/app-store-icon?query=${encodeURIComponent(trimmedTitle)}&country=${country}`, {
+        signal: abortController.signal,
+      })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error('search-failed')
@@ -196,7 +205,7 @@ function IconSettingsModalContent({
         }))
       })
       .catch(() => {
-        if (requestId !== requestIdRef.current) {
+        if (requestId !== requestIdRef.current || abortController.signal.aborted) {
           return
         }
 
@@ -208,7 +217,13 @@ function IconSettingsModalContent({
           },
         }))
       })
-  }, [activeTab, country, selectedCountryState.status, trimmedTitle])
+    }, 250)
+
+    return () => {
+      window.clearTimeout(searchTimer)
+      abortController.abort()
+    }
+  }, [activeTab, country, trimmedTitle])
 
   useEffect(() => {
     if (activeTab !== 'global') {
@@ -237,6 +252,8 @@ function IconSettingsModalContent({
     const requestId = requestIdRef.current
 
     setGlobalState({ status: 'loading', results: [] })
+    setValidGlobalResultIds(new Set())
+    setRejectedGlobalResultIds(new Set())
 
     void fetch(`/api/site-icons?url=${encodeURIComponent(trimmedUrl)}`)
       .then(async (response) => {
@@ -290,6 +307,40 @@ function IconSettingsModalContent({
     setSelectedIconFile(file)
     setSelectedFilePreview(nextPreview)
     setSelectedIconUrl(undefined)
+  }
+
+  function handleGlobalIconLoad(result: SiteIconResult, image: HTMLImageElement) {
+    const width = image.naturalWidth
+    const height = image.naturalHeight
+    const aspectRatio = height > 0 ? width / height : 0
+    const isUsable =
+      width >= MINIMUM_GLOBAL_ICON_SIZE &&
+      height >= MINIMUM_GLOBAL_ICON_SIZE &&
+      aspectRatio >= MINIMUM_GLOBAL_ICON_ASPECT_RATIO &&
+      aspectRatio <= MAXIMUM_GLOBAL_ICON_ASPECT_RATIO
+
+    if (!isUsable) {
+      rejectGlobalIcon(result)
+      return
+    }
+
+    setValidGlobalResultIds((current) => {
+      const next = new Set(current)
+      next.add(result.id)
+      return next
+    })
+  }
+
+  function rejectGlobalIcon(result: SiteIconResult) {
+    setRejectedGlobalResultIds((current) => {
+      const next = new Set(current)
+      next.add(result.id)
+      return next
+    })
+
+    if (selectedIconUrl === result.previewUrl) {
+      setSelectedIconUrl(undefined)
+    }
   }
 
   async function handleSave() {
@@ -358,7 +409,14 @@ function IconSettingsModalContent({
           <MagnifyingGlass size={13} weight="bold" aria-hidden="true" />
           <span>Поиск иконки для названия:</span>
         </p>
-        <p className="icon-settings-name">{trimmedTitle || '—'}</p>
+        <input
+          className="modal-input icon-settings-name-input"
+          value={searchTitle}
+          onChange={(event) => setSearchTitle(event.target.value)}
+          placeholder="Название"
+          aria-label="Название для поиска иконки"
+          autoComplete="off"
+        />
 
         <div className="icon-settings-tabs" role="tablist" aria-label="Выбор источника иконки">
           <button
@@ -479,17 +537,21 @@ function IconSettingsModalContent({
 
               {globalState.status === 'success' ? (
                 <>
-                  <p className="icon-results-text">Найдено подходящих результатов: {globalState.results.length}</p>
+                  <p className="icon-results-text">
+                    {isValidatingGlobalResults
+                      ? 'Проверяем качество иконок…'
+                      : `Найдено подходящих результатов: ${validatedGlobalResults.length}`}
+                  </p>
                   <div className="icon-results-grid">
-                    {globalState.results.map((result) => (
+                    {visibleGlobalResults.map((result) => (
                       <button
                         type="button"
                         key={result.id}
-                        className={
+                        className={`${
                           selectedIconUrl === result.previewUrl
                             ? 'icon-result-button is-selected'
                             : 'icon-result-button'
-                        }
+                        }${validGlobalResultIds.has(result.id) ? '' : ' is-validating'}`}
                         onClick={() => {
                           setSelectedIconUrl(result.previewUrl)
                           setSelectedIconFile(undefined)
@@ -497,7 +559,12 @@ function IconSettingsModalContent({
                         }}
                         title={result.source}
                       >
-                        <img src={result.previewUrl} alt={result.source} />
+                        <img
+                          src={result.previewUrl}
+                          alt={result.source}
+                          onLoad={(event) => handleGlobalIconLoad(result, event.currentTarget)}
+                          onError={() => rejectGlobalIcon(result)}
+                        />
                       </button>
                     ))}
                   </div>

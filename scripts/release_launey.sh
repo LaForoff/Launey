@@ -50,6 +50,33 @@ readonly ZIP_NAME="Launey-v${VERSION}-macOS.zip"
 readonly ZIP_PATH="${RELEASE_DIR}/${ZIP_NAME}"
 readonly GITHUB_ZIP_URL="https://github.com/LaForoff/Launey/releases/download/v${VERSION}/${ZIP_NAME}"
 
+resolve_developer_dir() {
+    local candidate
+
+    if [[ -n "${DEVELOPER_DIR:-}" && -x "${DEVELOPER_DIR}/usr/bin/xcodebuild" ]]; then
+        printf '%s\n' "${DEVELOPER_DIR}"
+        return 0
+    fi
+
+    candidate="$(xcode-select -p 2>/dev/null || true)"
+    if [[ -n "${candidate}" && -x "${candidate}/usr/bin/xcodebuild" ]]; then
+        printf '%s\n' "${candidate}"
+        return 0
+    fi
+
+    for candidate in \
+        /Applications/Xcode.app/Contents/Developer \
+        /Applications/Xcode-beta.app/Contents/Developer
+    do
+        if [[ -x "${candidate}/usr/bin/xcodebuild" ]]; then
+            printf '%s\n' "${candidate}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 if [[ ! -d ".git" || ! -d "macos" || ! -d "launey-web" || ! -d "scripts" ]]; then
     fail "скрипт нужно запускать из корня проекта Launey"
 fi
@@ -70,6 +97,14 @@ if ! command -v perl >/dev/null 2>&1; then
     fail "perl не найден, он нужен для безопасного обновления файлов"
 fi
 
+DEVELOPER_PATH="$(resolve_developer_dir || true)"
+if [[ -z "${DEVELOPER_PATH}" ]]; then
+    fail "не найдена полная установка Xcode. Установите Xcode или задайте DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer"
+fi
+readonly DEVELOPER_PATH
+
+log "Использую Xcode: ${DEVELOPER_PATH}"
+
 log "Обновляю версии: version=${VERSION}, build=${BUILD}"
 
 perl -0pi -e "s/MARKETING_VERSION = [0-9]+(?:\\.[0-9]+){1,2};/MARKETING_VERSION = ${VERSION};/g; s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${BUILD};/g" "${PROJECT_FILE}"
@@ -79,7 +114,7 @@ perl -0pi -e "s/export const APP_VERSION = '[^']+'/export const APP_VERSION = '$
 perl -0pi -e "s/readonly EXPECTED_VERSION=\"[^\"]+\"/readonly EXPECTED_VERSION=\"${VERSION}\"/" "${PACKAGE_SCRIPT}"
 
 log "Собираю Release build"
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
+DEVELOPER_DIR="${DEVELOPER_PATH}" xcodebuild \
     -project "${XCODE_PROJECT}" \
     -scheme Launey \
     -configuration Release build

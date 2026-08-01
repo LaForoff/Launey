@@ -15,17 +15,14 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.52);
+  color: var(--modal-text-muted);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
 }
 
-.icon-settings-name {
-  margin: 8px 0 0;
-  color: rgba(255, 255, 255, 0.94);
-  font-size: 29px;
-  font-weight: 540;
-  line-height: 1.2;
+.icon-settings-name-input {
+  width: 100%;
+  margin-top: 8px;
 }
 
 .icon-settings-tabs {
@@ -40,8 +37,8 @@
   align-items: center;
   gap: 5px;
   padding: 0 12px;
-  color: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--modal-text-primary);
+  border: 1px solid var(--modal-control-border);
   border-radius: 14px;
   background: var(--modal-control-background, rgba(42, 44, 50, 0.64));
   font-size: 12px;
@@ -50,13 +47,13 @@
 }
 
 .icon-settings-tab:active {
-  background: rgba(var(--modal-control-rgb, 42, 44, 50), 0.9);
+  background: var(--modal-control-background-active);
 }
 
 .icon-settings-tab.is-active {
-  color: rgba(255, 255, 255, 0.96);
-  border-color: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.46);
-  background: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.26);
+  color: var(--modal-text-primary);
+  border-color: var(--modal-selected-border);
+  background: var(--modal-selected-background);
   box-shadow: 0 0 14px rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.07);
 }
 
@@ -81,8 +78,8 @@
 .icon-country-button {
   height: 26px;
   padding: 0 15px;
-  color: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--modal-text-primary);
+  border: 1px solid var(--modal-control-border);
   border-radius: 13px;
   background: var(--modal-control-background, rgba(42, 44, 50, 0.64));
   font-size: 12px;
@@ -91,13 +88,13 @@
 }
 
 .icon-country-button:active {
-  background: rgba(var(--modal-control-rgb, 42, 44, 50), 0.9);
+  background: var(--modal-control-background-active);
 }
 
 .icon-country-button.is-active {
-  color: rgba(255, 255, 255, 0.96);
-  border-color: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.46);
-  background: rgba(var(--wallpaper-accent-rgb, 150, 165, 190), 0.26);
+  color: var(--modal-text-primary);
+  border-color: var(--modal-selected-border);
+  background: var(--modal-selected-background);
 }
 
 .icon-settings-results {
@@ -119,9 +116,9 @@
   align-items: center;
   gap: 6px;
   margin: 0 0 18px;
-  color: rgba(255, 255, 255, 0.52);
+  color: var(--modal-text-muted);
   font-size: 12px;
-  font-weight: 520;
+  font-weight: var(--font-weight-description);
 }
 
 .icon-results-grid {
@@ -135,7 +132,7 @@
   overflow: hidden;
   width: 64px;
   height: 64px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--modal-control-border);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.12);
   opacity: 0.45;
@@ -163,19 +160,24 @@
   width: 64px;
   height: 64px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--modal-control-border);
   border-radius: 16px;
   background: transparent;
   cursor: pointer;
 }
 
 .icon-result-button:active {
-  border-color: rgba(255, 255, 255, 0.42);
+  border-color: var(--modal-control-border-active);
 }
 
 .icon-result-button.is-selected {
-  border-color: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.52);
+  border-color: var(--modal-selected-border);
+  box-shadow: 0 0 0 1px var(--modal-selected-border);
+}
+
+.icon-result-button.is-validating {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .icon-result-button img {
@@ -199,18 +201,18 @@
   height: 164px;
   place-items: center;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--modal-card-border, var(--modal-control-border));
   border-radius: 42px;
-  background: var(--modal-card-background, rgba(36, 38, 44, 0.78));
+  background: var(--modal-card-background, #0f0f0f);
   cursor: pointer;
 }
 
 .icon-custom-upload:active {
-  background: rgba(var(--modal-control-rgb, 42, 44, 50), 0.9);
+  background: var(--modal-control-background-active);
 }
 
 .icon-custom-placeholder {
-  color: rgba(255, 255, 255, 0.56);
+  color: var(--modal-text-muted);
 }
 
 .icon-custom-preview {

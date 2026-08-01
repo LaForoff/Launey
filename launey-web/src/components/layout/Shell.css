@@ -276,7 +276,11 @@
 
 .tiles-scroll.is-empty {
   overflow: hidden;
-  padding-top: 0;
+  /* Keep the pager geometry identical on every space. The regular pager
+     overlaps the heading by 28px, so the empty state restores the intended
+     24px visual gap inside its own fixed viewport instead of resizing the
+     shared pager while it is sliding. */
+  padding-top: 22px;
   padding-bottom: 0;
 }
 
@@ -510,7 +514,7 @@
   justify-content: space-between;
   color: rgba(255, 255, 255, 0.88);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
 }
 
 .settings-row input[type='range'] {
@@ -529,9 +533,9 @@
   background:
     linear-gradient(
       90deg,
-      rgba(var(--slider-accent-rgb, 150, 165, 190), var(--slider-fill-opacity)) 0%,
-      rgba(var(--slider-accent-rgb, 150, 165, 190), var(--slider-fill-opacity)) calc(var(--slider-fill-edge) - var(--slider-edge-softness)),
-      rgba(var(--slider-accent-rgb, 150, 165, 190), 0.56) var(--slider-fill-edge),
+      rgba(var(--slider-accent-rgb, 0, 127, 255), var(--slider-fill-opacity)) 0%,
+      rgba(var(--slider-accent-rgb, 0, 127, 255), var(--slider-fill-opacity)) calc(var(--slider-fill-edge) - var(--slider-edge-softness)),
+      rgba(var(--slider-accent-rgb, 0, 127, 255), 0.56) var(--slider-fill-edge),
       rgba(122, 136, 182, 0.44) 100%
     ),
     linear-gradient(90deg, rgba(122, 136, 182, 0.44) 0%, rgba(122, 136, 182, 0.44) 100%);
@@ -572,7 +576,7 @@
 .settings-row input[type='range']::-moz-range-progress {
   height: var(--slider-height);
   border-radius: var(--slider-radius);
-  background: rgba(var(--slider-accent-rgb, 150, 165, 190), var(--slider-fill-opacity));
+  background: rgba(var(--slider-accent-rgb, 0, 127, 255), var(--slider-fill-opacity));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
@@ -606,7 +610,7 @@
   outline: 3px solid transparent;
   outline-offset: 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
   transition:
     background 160ms ease,
     border-color 160ms ease,
@@ -616,7 +620,7 @@
 .settings-row input[type='text']::placeholder {
   color: rgba(255, 255, 255, 0.34);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
 }
 
 .settings-row input[type='text']:focus {

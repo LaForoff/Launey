@@ -9,6 +9,10 @@
   border-radius: 28px;
 }
 
+html:not([data-theme='light']) .change-background-modal {
+  --modal-surface-background: rgba(15, 15, 15, 0.98);
+}
+
 .change-background-content {
   display: grid;
   gap: 10px;
@@ -26,12 +30,13 @@
   place-items: center;
   overflow: hidden;
   padding: 0 14px;
-  color: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--modal-text-primary);
+  border: 1px solid var(--modal-control-border);
   border-radius: 12px;
-  background: var(--modal-control-background, rgba(42, 44, 50, 0.64));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(30px);
+  background: var(--modal-hover-background);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   font-size: 13px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -43,8 +48,41 @@
 }
 
 .background-file-button:active {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--modal-control-border-active);
+  background: var(--modal-active-background);
+}
+
+.background-file-button.is-preparing {
+  cursor: progress;
+}
+
+.background-file-progress {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.background-file-spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border: 2px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: background-file-spin 720ms linear infinite;
+}
+
+@keyframes background-file-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .background-file-spinner {
+    animation-duration: 1.4s;
+  }
 }
 
 .background-file-input {
@@ -66,7 +104,7 @@
 }
 
 .background-file-button:focus-within {
-  outline: 3px solid rgba(255, 255, 255, 0.22);
+  outline: 3px solid var(--modal-focus-outline);
   outline-offset: 2px;
 }
 

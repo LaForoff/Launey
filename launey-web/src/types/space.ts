@@ -26,6 +26,7 @@ export interface UrlTile extends BaseTile {
 }
 
 export interface IconCustomization {
+  version?: number
   scale: number
   hasBackground: boolean
   backgroundColor: string

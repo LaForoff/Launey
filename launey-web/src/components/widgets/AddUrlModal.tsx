@@ -94,6 +94,7 @@ function AddUrlModalForm({
   const [iconSource, setIconSource] = useState<AddUrlPayload['iconSource']>()
   const [iconStatus, setIconStatus] = useState<IconStatus>(initialValue?.icon ? 'ready' : 'idle')
   const iconResolveJobIdRef = useRef(0)
+  const isTitleManuallyEditedRef = useRef(mode === 'edit' || Boolean(initialValue?.title))
 
   const canSave = title.trim().length > 0 && url.trim().length > 0 && !isSaving && iconStatus !== 'loading'
   const isIconPickerDisabled = title.trim().length === 0
@@ -116,6 +117,7 @@ function AddUrlModalForm({
   }, [initialValue?.icon])
 
   function resetForm() {
+    isTitleManuallyEditedRef.current = false
     setTitle('')
     setUrl('')
     setIcon(undefined)
@@ -133,6 +135,19 @@ function AddUrlModalForm({
 
   function handleClose() {
     onClose()
+  }
+
+  function handleTitleChange(nextTitle: string) {
+    isTitleManuallyEditedRef.current = true
+    setTitle(nextTitle)
+  }
+
+  function handleUrlChange(nextUrl: string) {
+    setUrl(nextUrl)
+
+    if (!isTitleManuallyEditedRef.current) {
+      setTitle(getSiteNameFromUrl(nextUrl))
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -228,12 +243,13 @@ function AddUrlModalForm({
   return (
     <>
       <motion.div
-        className="modal-backdrop"
+        className="modal-backdrop add-url-backdrop"
         role="presentation"
         {...getModalBackdropAnimation(shouldReduceMotion)}
         transition={{ duration: shouldReduceMotion ? 0.18 : 0.26, ease: MODAL_EASE }}
       >
-        <motion.form
+        {!isLauneyLabsOpen && !isIconSettingsOpen ? (
+          <motion.form
           className="add-url-modal"
           aria-labelledby={titleId}
           onSubmit={handleSubmit}
@@ -283,14 +299,14 @@ function AddUrlModalForm({
             <input
               className="modal-input"
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) => handleTitleChange(event.target.value)}
               placeholder="Название"
               autoComplete="off"
             />
             <input
               className="modal-input"
               value={url}
-              onChange={(event) => setUrl(event.target.value)}
+              onChange={(event) => handleUrlChange(event.target.value)}
               placeholder="URL"
               inputMode="url"
               autoComplete="off"
@@ -306,7 +322,8 @@ function AddUrlModalForm({
             Сохранить
           </button>
         </div>
-        </motion.form>
+          </motion.form>
+        ) : null}
       </motion.div>
       <IconSettingsModal
         isOpen={isIconSettingsOpen}
@@ -334,6 +351,34 @@ function AddUrlModalForm({
 
 function isOpenSourceIcon(icon: string | undefined) {
   return typeof icon === 'string' && /^https?:\/\//i.test(icon)
+}
+
+function getSiteNameFromUrl(rawUrl: string) {
+  const value = rawUrl.trim()
+  if (!value) {
+    return ''
+  }
+
+  try {
+    const normalizedUrl = /^[a-z][a-z\d+.-]*:\/\//i.test(value) ? value : `https://${value}`
+    const hostname = new URL(normalizedUrl).hostname.toLowerCase().replace(/^www\./, '')
+    const labels = hostname.split('.').filter(Boolean)
+
+    if (labels.length === 0) {
+      return ''
+    }
+
+    const commonSecondLevelDomains = new Set(['co', 'com', 'net', 'org', 'gov', 'edu', 'ac'])
+    const siteLabelIndex =
+      labels.length >= 3 && labels.at(-1)?.length === 2 && commonSecondLevelDomains.has(labels.at(-2) ?? '')
+        ? labels.length - 3
+        : Math.max(0, labels.length - 2)
+    const siteName = labels[siteLabelIndex]
+
+    return siteName ? siteName.charAt(0).toUpperCase() + siteName.slice(1) : ''
+  } catch {
+    return ''
+  }
 }
 
 async function ensureLocalReadyIcon(iconUrl: string) {

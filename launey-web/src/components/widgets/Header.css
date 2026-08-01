@@ -14,7 +14,7 @@
   color: rgba(255, 255, 255, 0.9);
   min-height: 1.2em;
   font-size: 14px;
-  font-weight: 520;
+  font-weight: var(--font-weight-description);
   text-transform: capitalize;
 }
 

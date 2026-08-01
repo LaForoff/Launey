@@ -4,6 +4,7 @@ import type { DraggableAttributes } from '@dnd-kit/core'
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'
 import type { UrlTile as UrlTileType } from '../../types/space'
 import { getTextIconDataUrl, getUrlTileDisplayIcon } from '../../lib/urlTile'
+import { getTileTitlePresentation } from '../../lib/tileTitle'
 import { CustomizableIcon } from '../ui/CustomizableIcon'
 import './UrlTile.css'
 
@@ -44,6 +45,7 @@ export function UrlTile({
   const textIconDataUrl = icon.type === 'text' ? getTextIconDataUrl(icon.value) : null
   const isNavigationBlocked = suppressClick || disableNavigation
   const hasCustomizedIcon = Boolean(tile.iconCustomization)
+  const titlePresentation = getTileTitlePresentation(tile.title)
 
   useEffect(() => {
     if (!import.meta.env.DEV) {
@@ -76,6 +78,7 @@ export function UrlTile({
     }
 
     event.preventDefault()
+    event.stopPropagation()
     onContextMenu(tile, event.clientX, event.clientY)
   }
 
@@ -147,7 +150,7 @@ export function UrlTile({
           onKeyDown={handleDeleteBubbleKeyDown}
         >
           <span className="tile-delete-bubble-dot">
-            <X size={14} weight="bold" />
+            <X size={12} weight="bold" />
           </span>
         </span>
       ) : null}
@@ -159,16 +162,7 @@ export function UrlTile({
         ]
           .filter(Boolean)
           .join(' ')}
-        imageClassName={
-          hasCustomizedIcon
-            ? undefined
-            : icon.type === 'image' && icon.isAppIcon
-              ? 'tile-icon-image tile-icon-image-app'
-              : icon.type === 'image'
-                ? 'tile-icon-image'
-                : 'tile-icon-text-image'
-        }
-        contentFit={hasCustomizedIcon || icon.type !== 'image' ? 'contain' : 'cover'}
+        contentFit="contain"
         src={icon.type === 'image' ? icon.value : textIconDataUrl ?? ''}
         customization={tile.iconCustomization}
         showInlineBorder={tile.addFrame !== false}
@@ -178,8 +172,8 @@ export function UrlTile({
         fetchPriority="auto"
         onLoad={handleImageLoad}
       />
-      <span className="tile-title" title={tile.title}>
-        {tile.title}
+      <span className={titlePresentation.className} title={tile.title}>
+        {titlePresentation.displayTitle}
       </span>
     </a>
   )

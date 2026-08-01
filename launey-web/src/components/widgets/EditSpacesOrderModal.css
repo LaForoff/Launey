@@ -29,9 +29,9 @@
   height: 44px;
   padding: 0 12px;
   gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--modal-card-border, var(--modal-control-border));
   border-radius: 12px;
-  background: var(--modal-card-background, rgba(36, 38, 44, 0.78));
+  background: var(--modal-card-background, #0f0f0f);
 }
 
 .edit-space-row.is-dragging {
@@ -46,7 +46,7 @@
   width: 24px;
   height: 24px;
   place-items: center;
-  color: rgba(255, 255, 255, 0.56);
+  color: var(--modal-text-muted);
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -56,7 +56,7 @@
 
 .edit-space-handle:active,
 .edit-space-delete:active:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--modal-active-background);
 }
 
 .edit-space-delete:disabled {
@@ -68,7 +68,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--modal-text-primary);
   font-size: 16px;
   font-weight: 540;
 }

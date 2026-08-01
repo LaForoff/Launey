@@ -1,4 +1,9 @@
 import type { SpaceBackground } from '../types/space'
+import {
+  DEFAULT_SEARCH_ENGINE,
+  isSearchEngineId,
+  type SearchEngineId,
+} from './searchEngines'
 
 export interface SyncMeta {
   lastExportAt: string | null
@@ -9,6 +14,7 @@ export type AppearanceTheme = 'system' | 'light' | 'dark'
 
 export interface AppSettings {
   appearanceTheme: AppearanceTheme
+  searchEngine: SearchEngineId
   backgroundBlur: number
   backgroundDim: number
   checkUpdatesOnOpen: boolean
@@ -19,6 +25,7 @@ export interface AppSettings {
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   appearanceTheme: 'system',
+  searchEngine: DEFAULT_SEARCH_ENGINE,
   backgroundBlur: 0,
   backgroundDim: 0,
   checkUpdatesOnOpen: true,
@@ -114,6 +121,7 @@ export function sanitizeAppSettings(
 
   return {
     appearanceTheme: sanitizeAppearanceTheme(payload.appearanceTheme),
+    searchEngine: sanitizeSearchEngine(payload.searchEngine),
     backgroundBlur: clampSetting(payload.backgroundBlur),
     backgroundDim: clampSetting(payload.backgroundDim),
     checkUpdatesOnOpen: sanitizeCheckUpdatesOnOpen(payload.checkUpdatesOnOpen),
@@ -121,6 +129,10 @@ export function sanitizeAppSettings(
     background: sanitizeBackground(payload.background),
     syncMeta: sanitizeSyncMeta(payload.syncMeta),
   }
+}
+
+function sanitizeSearchEngine(value: SearchEngineId | undefined): SearchEngineId {
+  return isSearchEngineId(value) ? value : DEFAULT_SEARCH_ENGINE
 }
 
 function sanitizeAppearanceTheme(value: AppearanceTheme | undefined): AppearanceTheme {

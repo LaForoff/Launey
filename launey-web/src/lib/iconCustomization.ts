@@ -1,18 +1,28 @@
 import type { IconCustomization } from '../types/space'
 
+export const ICON_CUSTOMIZATION_VERSION = 3
+
 export const DEFAULT_ICON_CUSTOMIZATION: IconCustomization = {
+  version: ICON_CUSTOMIZATION_VERSION,
   scale: 100,
   hasBackground: false,
   backgroundColor: '#00FFF4',
   volumeAlpha: 30,
   volumePlacement: 'above',
-  edgeAlpha: 100,
+  edgeAlpha: 50,
   edgeThickness: 1.5,
 }
 
 export function normalizeIconCustomization(value: Partial<IconCustomization> | undefined): IconCustomization {
+  const isCurrentVersion = value?.version === ICON_CUSTOMIZATION_VERSION
+  const hasCompatibleScale = isCurrentVersion || value?.version === 2
+  const usesLegacyDefaultEdge = !isCurrentVersion && value?.edgeAlpha === 100
+
   return {
-    scale: clampNumber(value?.scale, 50, 120, DEFAULT_ICON_CUSTOMIZATION.scale),
+    version: ICON_CUSTOMIZATION_VERSION,
+    scale: hasCompatibleScale
+      ? clampNumber(value?.scale, 50, 120, DEFAULT_ICON_CUSTOMIZATION.scale)
+      : DEFAULT_ICON_CUSTOMIZATION.scale,
     hasBackground: value?.hasBackground ?? DEFAULT_ICON_CUSTOMIZATION.hasBackground,
     backgroundColor: normalizeHexColor(value?.backgroundColor) ?? DEFAULT_ICON_CUSTOMIZATION.backgroundColor,
     volumeAlpha: clampNumber(value?.volumeAlpha, 0, 100, DEFAULT_ICON_CUSTOMIZATION.volumeAlpha),
@@ -20,7 +30,9 @@ export function normalizeIconCustomization(value: Partial<IconCustomization> | u
       value?.volumePlacement === 'below' || value?.volumePlacement === 'above'
         ? value.volumePlacement
         : DEFAULT_ICON_CUSTOMIZATION.volumePlacement,
-    edgeAlpha: clampNumber(value?.edgeAlpha, 0, 100, DEFAULT_ICON_CUSTOMIZATION.edgeAlpha),
+    edgeAlpha: usesLegacyDefaultEdge
+      ? DEFAULT_ICON_CUSTOMIZATION.edgeAlpha
+      : clampNumber(value?.edgeAlpha, 0, 100, DEFAULT_ICON_CUSTOMIZATION.edgeAlpha),
     edgeThickness: clampDecimal(value?.edgeThickness, 0, 3, DEFAULT_ICON_CUSTOMIZATION.edgeThickness, 1),
   }
 }

@@ -351,6 +351,7 @@ function isIconCustomization(value: unknown) {
 
   return (
     typeof maybeCustomization?.scale === 'number' &&
+    (typeof maybeCustomization.version === 'undefined' || typeof maybeCustomization.version === 'number') &&
     typeof maybeCustomization.hasBackground === 'boolean' &&
     typeof maybeCustomization.backgroundColor === 'string' &&
     (typeof maybeCustomization.volumeAlpha === 'undefined' || typeof maybeCustomization.volumeAlpha === 'number') &&

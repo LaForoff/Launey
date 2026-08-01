@@ -26,7 +26,7 @@ interface TileGridProps {
   onAddUrl: () => void
   onUrlContextMenu: (tile: Extract<Tile, { kind: 'url' }>, x: number, y: number) => void
   onFolderContextMenu: (tile: FolderTileType, x: number, y: number) => void
-  onOpenFolder: (tile: FolderTileType) => void
+  onOpenFolder: (tile: FolderTileType, rect: DOMRect) => void
   onDeleteUrl: (tile: Extract<Tile, { kind: 'url' }>) => void
   onDeleteFolder: (tile: FolderTileType) => void
   onReorderTiles: (nextTiles: Tile[]) => void
@@ -221,7 +221,7 @@ interface SortableTileItemProps {
   isNewlyCreatedFolder: boolean
   onUrlContextMenu: (tile: Extract<Tile, { kind: 'url' }>, x: number, y: number) => void
   onFolderContextMenu: (tile: FolderTileType, x: number, y: number) => void
-  onOpenFolder: (tile: FolderTileType) => void
+  onOpenFolder: (tile: FolderTileType, rect: DOMRect) => void
 }
 
 function SortableTileItem({

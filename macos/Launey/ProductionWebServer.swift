@@ -23,9 +23,21 @@ final class ProductionWebServer {
         "svg",
         "ico",
     ]
+    private static let allowedBackgroundExtensions: Set<String> = [
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "gif",
+        "mp4",
+        "webm",
+        "mov",
+    ]
+    private static let maximumBackgroundBytes = 500 * 1024 * 1024
 
     private struct AppSettings: Codable {
         let appearanceTheme: String
+        let searchEngine: String
         let backgroundBlur: Int
         let backgroundDim: Int
         let checkUpdatesOnOpen: Bool
@@ -46,6 +58,7 @@ final class ProductionWebServer {
 
         static let `default` = AppSettings(
             appearanceTheme: "system",
+            searchEngine: "google",
             backgroundBlur: 0,
             backgroundDim: 0,
             checkUpdatesOnOpen: true,
@@ -71,6 +84,9 @@ final class ProductionWebServer {
         let sellerName: String?
         let bundleId: String?
         let trackViewUrl: String?
+        let artworkUrl512: String?
+        let artworkUrl100: String?
+        let artworkUrl60: String?
     }
 
     private struct AppStoreResolvedIcon {
@@ -308,6 +324,18 @@ final class ProductionWebServer {
                 return makeSiteIconsResponse(requestPath: request.path)
             }
 
+            if requestedPath == "/api/search-suggestions" {
+                guard request.method == "GET" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeSearchSuggestionsResponse(requestPath: request.path)
+            }
+
             if requestedPath == "/api/import" {
                 guard request.method == "POST" else {
                     return makeJSONResponse(
@@ -381,6 +409,18 @@ final class ProductionWebServer {
                 }
             }
 
+            if requestedPath == "/api/backgrounds" {
+                guard request.method == "POST" else {
+                    return makeJSONResponse(
+                        status: 405,
+                        reason: "Method Not Allowed",
+                        body: ["error": "Method Not Allowed"]
+                    )
+                }
+
+                return makeUploadBackgroundResponse(body: request.body, headers: request.headers)
+            }
+
             if requestedPath == "/api/settings" {
                 switch request.method {
                 case "GET":
@@ -451,7 +491,25 @@ final class ProductionWebServer {
             return makeRuntimeFileResponse(
                 requestedPath: requestedPath,
                 urlPrefix: "/user-icons/",
-                directoryResolver: resolveUserIconsDirectory
+                directoryResolver: resolveUserIconsDirectory,
+                requestHeaders: request.headers
+            )
+        }
+
+        if requestedPath.hasPrefix("/user-backgrounds/") {
+            guard request.method == "GET" else {
+                return makeJSONResponse(
+                    status: 405,
+                    reason: "Method Not Allowed",
+                    body: ["error": "Method Not Allowed"]
+                )
+            }
+
+            return makeRuntimeFileResponse(
+                requestedPath: requestedPath,
+                urlPrefix: "/user-backgrounds/",
+                directoryResolver: resolveUserBackgroundsDirectory,
+                requestHeaders: request.headers
             )
         }
 
@@ -467,7 +525,8 @@ final class ProductionWebServer {
             return makeRuntimeFileResponse(
                 requestedPath: requestedPath,
                 urlPrefix: "/icon-cache/",
-                directoryResolver: resolveIconCacheDirectory
+                directoryResolver: resolveIconCacheDirectory,
+                requestHeaders: request.headers
             )
         }
 
@@ -664,6 +723,56 @@ final class ProductionWebServer {
         }
     }
 
+    private func makeUploadBackgroundResponse(body: Data, headers: [String: String]) -> Data {
+        guard !body.isEmpty else {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Empty file"]
+            )
+        }
+
+        guard body.count <= Self.maximumBackgroundBytes else {
+            return makeJSONResponse(
+                status: 413,
+                reason: "Payload Too Large",
+                body: ["error": "Background file is too large"]
+            )
+        }
+
+        guard let extensionName = resolveBackgroundExtension(
+            fileNameHeader: headers["x-file-name"],
+            contentTypeHeader: headers["content-type"]
+        ) else {
+            return makeJSONResponse(
+                status: 400,
+                reason: "Bad Request",
+                body: ["error": "Unsupported background type"]
+            )
+        }
+
+        let fileName = "background-\(UUID().uuidString.lowercased()).\(extensionName)"
+
+        do {
+            let directoryURL = try resolveUserBackgroundsDirectory()
+            let fileURL = directoryURL.appendingPathComponent(fileName)
+            try body.write(to: fileURL, options: .atomic)
+
+            return makeJSONResponse(
+                status: 200,
+                reason: "OK",
+                body: ["path": "/user-backgrounds/\(fileName)"]
+            )
+        } catch {
+            print("[ProductionServer] Failed to save background: \(error)")
+            return makeJSONResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                body: ["error": "Failed to save background"]
+            )
+        }
+    }
+
     private func makeDeleteIconResponse(body: Data) -> Data {
         do {
             let requestedPath = try parseDeleteIconPath(from: body)
@@ -770,6 +879,97 @@ final class ProductionWebServer {
         }
     }
 
+    private func makeSearchSuggestionsResponse(requestPath: String) -> Data {
+        let query = queryParameter("q", from: requestPath)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let engine = sanitizeSearchEngine(queryParameter("engine", from: requestPath))
+
+        guard !query.isEmpty else {
+            return makeJSONObjectResponse(
+                status: 200,
+                reason: "OK",
+                object: ["suggestions": []]
+            )
+        }
+
+        do {
+            let suggestions = try fetchSearchSuggestions(engine: engine, query: query)
+            return makeJSONObjectResponse(
+                status: 200,
+                reason: "OK",
+                object: ["suggestions": suggestions]
+            )
+        } catch {
+            print("[ProductionServer] Failed to fetch search suggestions: \(error)")
+            return makeJSONObjectResponse(
+                status: 200,
+                reason: "OK",
+                object: ["suggestions": []]
+            )
+        }
+    }
+
+    private func fetchSearchSuggestions(engine: String, query: String) throws -> [String] {
+        guard let url = makeSearchSuggestionsURL(engine: engine, query: query) else {
+            return []
+        }
+
+        let (data, response) = try fetchURL(
+            url,
+            userAgent: "Mozilla/5.0 Launey/0.1.5",
+            maxBytes: 262_144
+        )
+        guard (200..<300).contains(response.statusCode) else {
+            return []
+        }
+
+        let payload = try JSONSerialization.jsonObject(with: data)
+        let rawSuggestions: [Any]
+
+        if engine == "duckduckgo", let entries = payload as? [[String: Any]] {
+            rawSuggestions = entries.compactMap { $0["phrase"] }
+        } else if let entries = payload as? [Any], entries.count > 1,
+                  let suggestions = entries[1] as? [Any] {
+            rawSuggestions = suggestions
+        } else {
+            rawSuggestions = []
+        }
+
+        return rawSuggestions
+            .compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .prefix(6)
+            .map { $0 }
+    }
+
+    private func makeSearchSuggestionsURL(engine: String, query: String) -> URL? {
+        let baseURL: String
+        let queryName: String
+        var extraItems: [URLQueryItem] = []
+
+        switch engine {
+        case "yandex":
+            baseURL = "https://suggest.yandex.ru/suggest-ya.cgi"
+            queryName = "part"
+            extraItems = [URLQueryItem(name: "v", value: "4")]
+        case "duckduckgo":
+            baseURL = "https://duckduckgo.com/ac/"
+            queryName = "q"
+        case "bing":
+            baseURL = "https://api.bing.com/osjson.aspx"
+            queryName = "query"
+        default:
+            baseURL = "https://suggestqueries.google.com/complete/search"
+            queryName = "q"
+            extraItems = [URLQueryItem(name: "client", value: "firefox")]
+        }
+
+        var components = URLComponents(string: baseURL)
+        components?.queryItems = extraItems + [URLQueryItem(name: queryName, value: query)]
+        return components?.url
+    }
+
     private func makeSettingsResponse() -> Data {
         do {
             let settings = try loadSettings()
@@ -830,7 +1030,8 @@ final class ProductionWebServer {
     private func makeRuntimeFileResponse(
         requestedPath: String,
         urlPrefix: String,
-        directoryResolver: () throws -> URL
+        directoryResolver: () throws -> URL,
+        requestHeaders: [String: String] = [:]
     ) -> Data {
         do {
             let directoryURL = try directoryResolver()
@@ -842,7 +1043,7 @@ final class ProductionWebServer {
                 return makeTextResponse(status: 404, reason: "Not Found", body: "Not Found")
             }
 
-            return makeFileResponse(fileURL: fileURL)
+            return makeFileResponse(fileURL: fileURL, requestHeaders: requestHeaders)
         } catch {
             print("[ProductionServer] Failed to serve runtime file: \(error)")
             return makeJSONResponse(
@@ -1148,7 +1349,7 @@ final class ProductionWebServer {
         var results: [AppStoreResolvedIcon] = []
         for candidate in relevantCandidates {
             guard let appURL = candidate.app.trackViewUrl,
-                  let iconURL = try parseAppIconFromAppPage(appURL) else {
+                  let iconURL = appStoreArtworkURL(for: candidate.app) else {
                 continue
             }
 
@@ -1178,6 +1379,15 @@ final class ProductionWebServer {
             "score": first.score,
             "results": results.map(\.json),
         ]
+    }
+
+    private func appStoreArtworkURL(for app: AppStoreSearchResult) -> String? {
+        let artworkURL = app.artworkUrl512 ?? app.artworkUrl100 ?? app.artworkUrl60
+        guard let artworkURL, !artworkURL.isEmpty else {
+            return nil
+        }
+
+        return normalizeMzstaticIconSize(artworkURL)
     }
 
     private func makeAppStoreSearchURL(query: String, country: String) -> URL? {
@@ -1474,9 +1684,26 @@ final class ProductionWebServer {
         return indexURL
     }
 
-    private func makeFileResponse(fileURL: URL) -> Data {
+    private func makeFileResponse(fileURL: URL, requestHeaders: [String: String] = [:]) -> Data {
         guard let body = try? Data(contentsOf: fileURL) else {
             return makeTextResponse(status: 500, reason: "Internal Server Error", body: "Internal Server Error")
+        }
+
+        if let rangeHeader = requestHeaders["range"],
+           let byteRange = parseByteRange(rangeHeader, totalLength: body.count) {
+            let partialBody = body.subdata(in: byteRange)
+            return makeResponse(
+                status: 206,
+                reason: "Partial Content",
+                headers: [
+                    "Content-Type": mimeType(for: fileURL.pathExtension),
+                    "Content-Length": "\(partialBody.count)",
+                    "Content-Range": "bytes \(byteRange.lowerBound)-\(byteRange.upperBound - 1)/\(body.count)",
+                    "Accept-Ranges": "bytes",
+                    "Cache-Control": "no-cache",
+                ],
+                body: partialBody
+            )
         }
 
         return makeResponse(
@@ -1485,10 +1712,47 @@ final class ProductionWebServer {
             headers: [
                 "Content-Type": mimeType(for: fileURL.pathExtension),
                 "Content-Length": "\(body.count)",
+                "Accept-Ranges": "bytes",
                 "Cache-Control": "no-cache",
             ],
             body: body
         )
+    }
+
+    private func parseByteRange(_ header: String, totalLength: Int) -> Range<Int>? {
+        guard totalLength > 0,
+              header.lowercased().hasPrefix("bytes=") else {
+            return nil
+        }
+
+        let value = header.dropFirst("bytes=".count)
+        guard !value.contains(","),
+              let separatorIndex = value.firstIndex(of: "-") else {
+            return nil
+        }
+
+        let startText = value[..<separatorIndex].trimmingCharacters(in: .whitespaces)
+        let endText = value[value.index(after: separatorIndex)...].trimmingCharacters(in: .whitespaces)
+
+        if startText.isEmpty {
+            guard let suffixLength = Int(endText), suffixLength > 0 else {
+                return nil
+            }
+            let start = max(0, totalLength - suffixLength)
+            return start..<totalLength
+        }
+
+        guard let start = Int(startText), start >= 0, start < totalLength else {
+            return nil
+        }
+
+        let requestedEnd = Int(endText) ?? (totalLength - 1)
+        let end = min(totalLength - 1, requestedEnd)
+        guard end >= start else {
+            return nil
+        }
+
+        return start..<(end + 1)
     }
 
     private func makeJSONResponse(status: Int, reason: String, body: [String: String]) -> Data {
@@ -1595,6 +1859,18 @@ final class ProductionWebServer {
     private func resolveUserIconsDirectory() throws -> URL {
         let directory = try resolveLauneyApplicationSupportDirectory()
             .appendingPathComponent("user-icons", isDirectory: true)
+
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+
+        return directory
+    }
+
+    private func resolveUserBackgroundsDirectory() throws -> URL {
+        let directory = try resolveLauneyApplicationSupportDirectory()
+            .appendingPathComponent("user-backgrounds", isDirectory: true)
 
         try FileManager.default.createDirectory(
             at: directory,
@@ -2520,9 +2796,11 @@ final class ProductionWebServer {
             ? backgroundColor
             : "#00FFF4"
         let volumePlacement = payload["volumePlacement"] as? String
+        let version = (payload["version"] as? NSNumber)?.intValue ?? 0
 
         return [
-            "scale": min(120, max(50, scale.doubleValue)),
+            "version": 2,
+            "scale": version == 2 ? min(120, max(50, scale.doubleValue)) : 100,
             "hasBackground": hasBackground,
             "backgroundColor": color,
             "volumeAlpha": clampedNumber(payload["volumeAlpha"], min: 0, max: 100, fallback: 40),
@@ -2691,6 +2969,48 @@ final class ProductionWebServer {
         }
     }
 
+    private func resolveBackgroundExtension(
+        fileNameHeader: String?,
+        contentTypeHeader: String?
+    ) -> String? {
+        if let fileNameHeader,
+           let decodedName = fileNameHeader.removingPercentEncoding {
+            let fileExtension = URL(fileURLWithPath: decodedName).pathExtension.lowercased()
+            if Self.allowedBackgroundExtensions.contains(fileExtension) {
+                return fileExtension
+            }
+        }
+
+        guard let contentTypeHeader else {
+            return nil
+        }
+
+        let contentType = contentTypeHeader
+            .split(separator: ";", maxSplits: 1)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch contentType {
+        case "image/png":
+            return "png"
+        case "image/jpeg":
+            return "jpg"
+        case "image/webp":
+            return "webp"
+        case "image/gif":
+            return "gif"
+        case "video/mp4":
+            return "mp4"
+        case "video/webm":
+            return "webm"
+        case "video/quicktime":
+            return "mov"
+        default:
+            return nil
+        }
+    }
+
     private func resolveIconExtension(contentTypeHeader: String?) -> String? {
         resolveIconExtension(fileNameHeader: nil, contentTypeHeader: contentTypeHeader)
     }
@@ -2733,6 +3053,7 @@ final class ProductionWebServer {
 
         return AppSettings(
             appearanceTheme: sanitizeAppearanceTheme(payload["appearanceTheme"]),
+            searchEngine: sanitizeSearchEngine(payload["searchEngine"]),
             backgroundBlur: clampSetting(payload["backgroundBlur"]),
             backgroundDim: clampSetting(payload["backgroundDim"]),
             checkUpdatesOnOpen: sanitizeCheckUpdatesOnOpen(payload["checkUpdatesOnOpen"]),
@@ -2740,6 +3061,19 @@ final class ProductionWebServer {
             background: sanitizeBackground(payload["background"]),
             syncMeta: sanitizeSyncMeta(payload["syncMeta"])
         )
+    }
+
+    private func sanitizeSearchEngine(_ value: Any?) -> String {
+        guard let value = value as? String else {
+            return AppSettings.default.searchEngine
+        }
+
+        switch value {
+        case "google", "yandex", "duckduckgo", "bing":
+            return value
+        default:
+            return AppSettings.default.searchEngine
+        }
     }
 
     private func sanitizeAppearanceTheme(_ value: Any?) -> String {
@@ -2852,8 +3186,16 @@ final class ProductionWebServer {
             return "image/jpeg"
         case "webp":
             return "image/webp"
+        case "gif":
+            return "image/gif"
         case "ico":
             return "image/x-icon"
+        case "mp4":
+            return "video/mp4"
+        case "webm":
+            return "video/webm"
+        case "mov":
+            return "video/quicktime"
         default:
             return "application/octet-stream"
         }

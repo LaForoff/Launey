@@ -23,20 +23,18 @@ import sidebarSyncIcon from '../../assets/settings-sidebar/sync.png'
 import sidebarThemeIcon from '../../assets/settings-sidebar/theme.png'
 import sidebarUpdateIcon from '../../assets/settings-sidebar/update.png'
 import sidebarWeatherIcon from '../../assets/settings-sidebar/weather.png'
-import themeDark from '../../assets/theme-dark.jpg'
-import themeLight from '../../assets/theme-light.jpg'
-import themeSystem from '../../assets/theme-system.jpg'
+import themeDark from '../../assets/theme-dark.png'
+import themeLight from '../../assets/theme-light.png'
+import themeSystem from '../../assets/theme-system.png'
+import changelogLogoDark from '../../assets/whats-new/settings/launey-dark.png'
+import changelogLogoLight from '../../assets/whats-new/settings/launey-light.png'
 import { APP_VERSION, BUILD_INFO } from '../../config/buildInfo'
 import { DottedLogo } from '../ui/DottedLogo'
-import { ReleaseNotesMarkdown } from '../ui/ReleaseNotesMarkdown'
 import type { AppearanceTheme, AppSettings, SyncMeta } from '../../lib/settingsApi'
 import { formatDateTime } from '../../lib/formatBuildDate'
 import type { LauneyExportFile } from '../../lib/launeySync'
 import {
-  CURRENT_RELEASE,
   downloadUpdateAsset,
-  getCurrentReleaseDetails,
-  getStoredCurrentReleaseDetails,
   requestNativeUpdateCheck,
   requestNativeUpdateStatus,
   type UpdateRelease,
@@ -52,11 +50,13 @@ import {
 } from './modalMotion'
 import { Switch } from '../ui/Switch'
 import { UpdateReleaseModalSurface } from './UpdateAvailableModal'
+import { FlowingGradientBackground } from './FlowingGradientBackground'
 import './SettingsWindow.css'
 
 export type SettingsSection = 'sync' | 'appearance' | 'weather' | 'about' | 'updates'
 
 const SHOW_UPDATES_SECTION = true
+const LAST_SETTINGS_SECTION_STORAGE_KEY = 'launey:last-settings-section'
 const UPDATE_CHECK_STATUS_POLL_INTERVAL_MS = 700
 const UPDATE_CHECK_STATUS_TIMEOUT_MS = 120_000
 
@@ -82,6 +82,7 @@ interface SettingsWindowProps {
   onNotifySuccess: (text: string) => void
   onExport: () => Promise<void>
   onImport: (file: LauneyExportFile) => Promise<void>
+  onOpenWhatsNew: () => void
 }
 
 type SidebarItem = {
@@ -111,6 +112,7 @@ export function SettingsWindow({
   onNotifySuccess,
   onExport,
   onImport,
+  onOpenWhatsNew,
 }: SettingsWindowProps) {
   const shouldReduceMotion = Boolean(useReducedMotion())
 
@@ -128,6 +130,7 @@ export function SettingsWindow({
             onNotifySuccess={onNotifySuccess}
             onExport={onExport}
             onImport={onImport}
+            onOpenWhatsNew={onOpenWhatsNew}
             shouldReduceMotion={shouldReduceMotion}
           />
         ) : null}
@@ -150,9 +153,19 @@ function SettingsWindowContent({
   onNotifySuccess,
   onExport,
   onImport,
+  onOpenWhatsNew,
   shouldReduceMotion,
 }: SettingsWindowContentProps) {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('sync')
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
+    try {
+      const storedSection = window.localStorage.getItem(LAST_SETTINGS_SECTION_STORAGE_KEY)
+      const isKnownSection = SIDEBAR_ITEMS.some(({ id }) => id === storedSection)
+
+      return isKnownSection ? (storedSection as SettingsSection) : 'sync'
+    } catch {
+      return 'sync'
+    }
+  })
   const [shouldAnimateAboutLogo, setShouldAnimateAboutLogo] = useState(false)
   const [isPreviewingWallpaper, setIsPreviewingWallpaper] = useState(false)
   const [releaseNotesRelease, setReleaseNotesRelease] = useState<UpdateRelease | null>(null)
@@ -198,6 +211,14 @@ function SettingsWindowContent({
       setShouldAnimateAboutLogo(nextSection === 'about')
     }
   }, [requestedSection])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(LAST_SETTINGS_SECTION_STORAGE_KEY, activeSection)
+    } catch {
+      // Settings remain usable when persistent storage is unavailable.
+    }
+  }, [activeSection])
 
   const backgroundLabel = useMemo(() => getBackgroundLabel(draftSettings.background), [draftSettings.background])
 
@@ -297,6 +318,7 @@ function SettingsWindowContent({
               onShowReleaseNotes={setReleaseNotesRelease}
               onNotify={onNotify}
               onNotifySuccess={onNotifySuccess}
+              onOpenWhatsNew={onOpenWhatsNew}
             />
           ) : null}
         </div>
@@ -471,37 +493,39 @@ function SyncSection({ syncMeta, onNotify, onNotifySuccess, onExport, onImport }
           </article>
         </div>
       </SettingsSectionShell>
-      <AnimatePresence>
-        {pendingFile ? (
-        <motion.div
-          className="modal-backdrop modal-backdrop-strong"
-          role="presentation"
-          {...getModalBackdropAnimation(shouldReduceMotion)}
-          transition={{ duration: shouldReduceMotion ? 0.14 : 0.24, ease: MODAL_EASE }}
-        >
-          <motion.section
-            className="add-url-modal delete-url-modal"
-            {...getCenteredModalAnimation(shouldReduceMotion)}
-            transition={{ duration: shouldReduceMotion ? 0.18 : MODAL_DURATION, ease: MODAL_EASE }}
-          >
-            <div className="modal-header">
-              <h2>Импортировать данные?</h2>
-            </div>
-            <p>
-              Импорт заменит текущие пространства и настройки. Продолжить?
-            </p>
-            <div className="delete-url-actions">
-              <button className="modal-button modal-button-secondary" type="button" onClick={() => setPendingFile(null)} disabled={isImporting}>
-                Отмена
-              </button>
-              <button className="modal-button modal-button-danger" type="button" onClick={() => void confirmImport()} disabled={isImporting}>
-                Импортировать
-              </button>
-            </div>
-          </motion.section>
-        </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <ModalPortal>
+        <AnimatePresence>
+          {pendingFile ? (
+            <motion.div
+              className="modal-backdrop modal-backdrop-strong"
+              role="presentation"
+              {...getModalBackdropAnimation(shouldReduceMotion)}
+              transition={{ duration: shouldReduceMotion ? 0.14 : 0.24, ease: MODAL_EASE }}
+            >
+              <motion.section
+                className="add-url-modal delete-url-modal"
+                {...getCenteredModalAnimation(shouldReduceMotion)}
+                transition={{ duration: shouldReduceMotion ? 0.18 : MODAL_DURATION, ease: MODAL_EASE }}
+              >
+                <div className="modal-header">
+                  <h2>Импортировать данные?</h2>
+                </div>
+                <p className="delete-url-text">
+                  Импорт заменит текущие пространства и настройки. Продолжить?
+                </p>
+                <div className="modal-actions">
+                  <button className="modal-button modal-button-secondary" type="button" onClick={() => setPendingFile(null)} disabled={isImporting}>
+                    Отмена
+                  </button>
+                  <button className="modal-button modal-button-danger" type="button" onClick={() => void confirmImport()} disabled={isImporting}>
+                    Импортировать
+                  </button>
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </ModalPortal>
     </>
   )
 }
@@ -718,6 +742,7 @@ function WeatherSection({ weatherLocation, onChange }: WeatherSectionProps) {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false)
   const searchTimeoutRef = useRef<number | null>(null)
+  const isLocationFocusedRef = useRef(false)
 
   useEffect(() => {
     const query = weatherLocation.trim()
@@ -740,8 +765,13 @@ function WeatherSection({ weatherLocation, onChange }: WeatherSectionProps) {
     searchTimeoutRef.current = window.setTimeout(() => {
       void searchWeatherCities(query, controller.signal)
         .then((nextSuggestions) => {
-          setSuggestions(nextSuggestions)
-          setIsSuggestionsOpen(nextSuggestions.length > 0)
+          const normalizedQuery = query.toLocaleLowerCase()
+          const filteredSuggestions = nextSuggestions.filter(
+            (entry) => entry.label.trim().toLocaleLowerCase() !== normalizedQuery,
+          )
+
+          setSuggestions(filteredSuggestions)
+          setIsSuggestionsOpen(isLocationFocusedRef.current && filteredSuggestions.length > 0)
         })
         .catch(() => {
           setSuggestions([])
@@ -793,8 +823,12 @@ function WeatherSection({ weatherLocation, onChange }: WeatherSectionProps) {
               value={weatherLocation}
               placeholder="Например: Москва"
               onChange={(event) => onChange(event.target.value)}
-              onFocus={() => setIsSuggestionsOpen(suggestions.length > 0)}
+              onFocus={() => {
+                isLocationFocusedRef.current = true
+                setIsSuggestionsOpen(suggestions.length > 0)
+              }}
               onBlur={() => {
+                isLocationFocusedRef.current = false
                 window.setTimeout(() => setIsSuggestionsOpen(false), 120)
               }}
               onKeyDown={handleLocationKeyDown}
@@ -809,6 +843,7 @@ function WeatherSection({ weatherLocation, onChange }: WeatherSectionProps) {
                     className="settings-city-suggestion"
                     onClick={() => {
                       onChange(entry.label)
+                      setSuggestions([])
                       setIsSuggestionsOpen(false)
                     }}
                   >
@@ -836,6 +871,7 @@ function AboutSection({ animateLogo }: { animateLogo: boolean }) {
       <div className="settings-about-center">
         <DottedLogo
           className="settings-about-dotted-logo"
+          gridSize={3}
           animate={animateLogo}
           staggerMs={125}
           revealDurationMs={420}
@@ -891,6 +927,7 @@ interface UpdatesSectionProps {
   onShowReleaseNotes: (release: UpdateRelease) => void
   onNotify: (type: 'warning' | 'error', text: string) => void
   onNotifySuccess: (text: string) => void
+  onOpenWhatsNew: () => void
 }
 
 function UpdatesSection({
@@ -898,31 +935,10 @@ function UpdatesSection({
   onChangeSettings,
   onNotify,
   onNotifySuccess,
+  onOpenWhatsNew,
 }: UpdatesSectionProps) {
-  const storedCurrentRelease = useMemo(() => getStoredCurrentReleaseDetails(), [])
-  const [currentRelease, setCurrentRelease] = useState<UpdateRelease>(storedCurrentRelease ?? CURRENT_RELEASE)
   const [isChecking, setIsChecking] = useState(false)
   const updateCheckRunRef = useRef(0)
-
-  useEffect(() => {
-    let isCancelled = false
-
-    void getCurrentReleaseDetails()
-      .then((resolvedCurrentRelease) => {
-        if (!isCancelled) {
-          setCurrentRelease(resolvedCurrentRelease)
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setCurrentRelease(CURRENT_RELEASE)
-        }
-      })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -1005,21 +1021,32 @@ function UpdatesSection({
           </div>
         </article>
 
-        <CurrentVersionCard release={currentRelease} />
+        <ChangelogCard onOpen={onOpenWhatsNew} />
       </div>
     </SettingsSectionShell>
   )
 }
 
-function CurrentVersionCard({ release }: { release: UpdateRelease }) {
+function ChangelogCard({ onOpen }: { onOpen: () => void }) {
   return (
-    <article className="settings-card settings-current-version-card">
-      <div className="settings-release-notes">
-        <h3>В этом обновлении</h3>
-        <ReleaseNotesMarkdown
-          className="settings-release-notes-content"
-          markdown={release.releaseNotesMarkdown}
-        />
+    <article className="settings-card settings-changelog-card">
+      <div className="settings-changelog-card-visual">
+        <FlowingGradientBackground />
+        <div className="settings-changelog-card-surface" />
+        <div className="settings-changelog-card-content">
+          <span className="settings-changelog-logo">
+            <img className="settings-changelog-logo-dark" src={changelogLogoDark} alt={`Launey ${APP_VERSION}`} />
+            <img className="settings-changelog-logo-light" src={changelogLogoLight} alt={`Launey ${APP_VERSION}`} />
+          </span>
+          <p>Именно здесь можно погрузиться во все новые изменения</p>
+          <button
+            type="button"
+            className="settings-inline-button modal-button-primary settings-changelog-button"
+            onClick={onOpen}
+          >
+            Узнать больше
+          </button>
+        </div>
       </div>
     </article>
   )

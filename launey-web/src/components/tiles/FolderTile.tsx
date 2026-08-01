@@ -4,11 +4,12 @@ import type { DraggableAttributes } from '@dnd-kit/core'
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'
 import { FolderPreview } from '../folder/FolderPreview'
 import type { FolderTile as FolderTileType } from '../../types/space'
+import { getTileTitlePresentation } from '../../lib/tileTitle'
 import './FolderTile.css'
 
 interface FolderTileProps {
   tile: FolderTileType
-  onOpen: (tile: FolderTileType) => void
+  onOpen: (tile: FolderTileType, rect: DOMRect) => void
   onContextMenu: (tile: FolderTileType, x: number, y: number) => void
   draggableAttributes?: DraggableAttributes
   draggableListeners?: SyntheticListenerMap
@@ -41,6 +42,8 @@ export function FolderTile({
   showDeleteBubble = false,
   onDeleteRequest,
 }: FolderTileProps) {
+  const titlePresentation = getTileTitlePresentation(tile.title)
+
   useEffect(() => {
     if (!import.meta.env.DEV) {
       return
@@ -59,7 +62,8 @@ export function FolderTile({
       return
     }
 
-    onOpen(tile)
+    const preview = event.currentTarget.querySelector<HTMLElement>('.folder-preview')
+    onOpen(tile, preview?.getBoundingClientRect() ?? event.currentTarget.getBoundingClientRect())
   }
 
   function handleContextMenu(event: MouseEvent<HTMLButtonElement>) {
@@ -69,6 +73,7 @@ export function FolderTile({
     }
 
     event.preventDefault()
+    event.stopPropagation()
     onContextMenu(tile, event.clientX, event.clientY)
   }
 
@@ -107,6 +112,7 @@ export function FolderTile({
         .filter(Boolean)
         .join(' ')}
       type="button"
+      data-folder-id={tile.id}
       style={
         {
           '--tile-accent': tile.accent,
@@ -130,13 +136,13 @@ export function FolderTile({
           onKeyDown={handleDeleteBubbleKeyDown}
         >
           <span className="tile-delete-bubble-dot">
-            <X size={14} weight="bold" />
+            <X size={12} weight="bold" />
           </span>
         </span>
       ) : null}
-      <FolderPreview items={tile.items} layoutId={`folder-surface-${tile.id}`} />
-      <span className="tile-title" title={tile.title}>
-        {tile.title}
+      <FolderPreview items={tile.items} />
+      <span className={titlePresentation.className} title={tile.title}>
+        {titlePresentation.displayTitle}
       </span>
     </button>
   )

@@ -13,7 +13,7 @@
 .update-available-modal-cover {
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--modal-separator);
 }
 
 .update-available-modal-cover-image {
@@ -38,7 +38,7 @@
 .update-available-modal-copy h2,
 .update-available-modal-copy h3 {
   margin: 0;
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--modal-text-primary);
 }
 
 .update-available-modal-copy h2 {
@@ -62,7 +62,7 @@
   min-height: 0;
   max-height: 100%;
   padding-right: 8px;
-  color: rgba(255, 255, 255, 0.66);
+  color: var(--modal-text-secondary);
   font-size: 13px;
   overflow-y: auto;
   overscroll-behavior: contain;

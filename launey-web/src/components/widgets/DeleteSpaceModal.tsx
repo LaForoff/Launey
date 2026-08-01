@@ -47,19 +47,18 @@ export function DeleteSpaceModal({
               </button>
             </div>
             <p className="delete-url-text">
-              Вы действительно хотите удалить пространство «{title}»? Все имеющиеся ярлыки и папки
-              будут безвозвратно удалены!
+              Пространство «{title}» и всё его содержимое будут удалены безвозвратно.
             </p>
             <div className="modal-actions">
+              <button className="modal-button modal-button-secondary" type="button" onClick={onCancel}>
+                Отмена
+              </button>
               <button
                 className="modal-button modal-button-destructive"
                 type="button"
                 onClick={onConfirm}
               >
                 Удалить
-              </button>
-              <button className="modal-button modal-button-secondary" type="button" onClick={onCancel}>
-                Отмена
               </button>
             </div>
             </motion.section>

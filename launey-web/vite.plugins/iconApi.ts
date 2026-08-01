@@ -28,6 +28,7 @@ const MIN_RELEVANCE_SCORE = 40
 const SITE_ICONS_CACHE_TTL_MS = 1000 * 60 * 30
 const DEFAULT_APP_SETTINGS = {
   appearanceTheme: 'system',
+  searchEngine: 'google',
   backgroundBlur: 0,
   backgroundDim: 0,
   checkUpdatesOnOpen: true,
@@ -87,6 +88,7 @@ export function iconApiPlugin(): Plugin {
       req.url !== '/api/arc-import-spaces' &&
       !req.url?.startsWith('/api/app-store-icon') &&
       !req.url?.startsWith('/api/site-icons') &&
+      !req.url?.startsWith('/api/search-suggestions') &&
       !req.url?.startsWith('/api/settings') &&
       req.url !== '/api/export' &&
       req.url !== '/api/import' &&
@@ -272,6 +274,20 @@ async function handleIconRequest(
       return
     }
 
+    if (req.method === 'GET' && req.url?.startsWith('/api/search-suggestions')) {
+      const requestUrl = new URL(req.url, 'http://localhost')
+      const query = requestUrl.searchParams.get('q')?.trim() ?? ''
+      const engine = normalizeSearchEngine(requestUrl.searchParams.get('engine') ?? undefined)
+
+      if (!query) {
+        sendJson(res, 200, { suggestions: [] })
+        return
+      }
+
+      sendJson(res, 200, { suggestions: await requestSearchSuggestions(engine, query) })
+      return
+    }
+
     next()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected error'
@@ -291,6 +307,9 @@ interface AppStoreSearchResult {
   trackViewUrl?: string
   bundleId?: string
   sellerName?: string
+  artworkUrl512?: string
+  artworkUrl100?: string
+  artworkUrl60?: string
 }
 
 interface SiteIconCandidate {
@@ -322,6 +341,7 @@ const siteIconsCache = new Map<string, SiteIconsCacheEntry>()
 
 type AppSettingsPayload = {
   appearanceTheme: 'system' | 'light' | 'dark'
+  searchEngine: 'google' | 'yandex' | 'duckduckgo' | 'bing'
   backgroundBlur: number
   backgroundDim: number
   checkUpdatesOnOpen: boolean
@@ -374,24 +394,22 @@ async function findAppStoreIconsByCountry(query: string, country: string) {
     return { ok: false as const, error: 'Иконка не найдена в App Store' }
   }
 
-  const resolved = await Promise.all(
-    relevantCandidates.map(async (candidate) => {
-      const iconUrl = await parseAppIconFromAppPage(candidate.trackViewUrl ?? '')
+  const resolved = relevantCandidates.map((candidate) => {
+    const iconUrl = getAppStoreArtworkUrl(candidate)
 
-      if (!iconUrl) {
-        return null
-      }
+    if (!iconUrl) {
+      return null
+    }
 
-      return {
-        title: candidate.trackName ?? query,
-        appUrl: candidate.trackViewUrl ?? '',
-        iconUrl,
-        country,
-        matchedName: candidate.trackName ?? '',
-        score: candidate.score,
-      }
-    }),
-  )
+    return {
+      title: candidate.trackName ?? query,
+      appUrl: candidate.trackViewUrl ?? '',
+      iconUrl,
+      country,
+      matchedName: candidate.trackName ?? '',
+      score: candidate.score,
+    }
+  })
 
   const results = resolved.filter((value): value is NonNullable<typeof value> => Boolean(value))
 
@@ -409,6 +427,11 @@ async function findAppStoreIconsByCountry(query: string, country: string) {
     score: results[0].score,
     results,
   }
+}
+
+function getAppStoreArtworkUrl(app: AppStoreSearchResult) {
+  const artworkUrl = app.artworkUrl512 ?? app.artworkUrl100 ?? app.artworkUrl60
+  return artworkUrl ? normalizeMzstaticIconSize(artworkUrl) : null
 }
 
 function getRelevanceScore(query: string, app: AppStoreSearchResult) {
@@ -469,105 +492,6 @@ function normalizeForMatch(value: string | undefined) {
     .replaceAll('ё', 'е')
     .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
     .replace(/\s+/g, ' ')
-}
-
-async function parseAppIconFromAppPage(appUrl: string) {
-  try {
-    const response = await fetch(appUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-      },
-    })
-
-    if (!response.ok) {
-      return null
-    }
-
-    const html = await response.text()
-    const candidates = collectMzstaticIconCandidates(html)
-    const bestCandidate = pickBestIconCandidate(candidates)
-
-    return bestCandidate
-  } catch {
-    return null
-  }
-}
-
-function collectMzstaticIconCandidates(html: string) {
-  const candidates = new Set<string>()
-
-  for (const metaMatch of html.matchAll(
-    /<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["'][^>]*>/gi,
-  )) {
-    const value = metaMatch[1]
-    if (value) {
-      candidates.add(value)
-    }
-  }
-
-  for (const ldJsonMatch of html.matchAll(
-    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
-  )) {
-    const rawJson = ldJsonMatch[1]
-
-    try {
-      const parsed = JSON.parse(rawJson) as { image?: string | string[] }
-      const images = Array.isArray(parsed.image) ? parsed.image : [parsed.image]
-
-      for (const image of images) {
-        if (typeof image === 'string') {
-          candidates.add(image)
-        }
-      }
-    } catch {
-      // ignore invalid json blocks
-    }
-  }
-
-  for (const urlMatch of html.matchAll(/https?:\/\/[^"' )]+mzstatic[^"' )]+/gi)) {
-    candidates.add(urlMatch[0])
-  }
-
-  return [...candidates].filter((url) => url.includes('mzstatic.com'))
-}
-
-function pickBestIconCandidate(candidates: string[]) {
-  if (candidates.length === 0) {
-    return null
-  }
-
-  const sorted = candidates
-    .map((url) => ({ url, score: getIconScore(url) }))
-    .sort((a, b) => b.score - a.score)
-
-  return normalizeMzstaticIconSize(sorted[0]?.url ?? null)
-}
-
-function getIconScore(url: string) {
-  let score = 0
-  const lower = url.toLowerCase()
-
-  if (lower.includes('400x400')) {
-    score += 10
-  }
-
-  if (lower.includes('.webp')) {
-    score += 4
-  } else if (lower.includes('.png')) {
-    score += 3
-  }
-
-  if (lower.includes('/image/thumb/')) {
-    score += 2
-  }
-
-  const sizeMatch = lower.match(/(\d{2,4})x(\d{2,4})bb/)
-  if (sizeMatch) {
-    score += Number(sizeMatch[1]) / 100
-  }
-
-  return score
 }
 
 function normalizeMzstaticIconSize(url: string | null) {
@@ -1335,7 +1259,8 @@ function sanitizeIconCustomization(value: unknown): IconCustomization | undefine
   }
 
   return {
-    scale: Math.min(120, Math.max(50, payload.scale)),
+    version: 2,
+    scale: payload.version === 2 ? Math.min(120, Math.max(50, payload.scale)) : 100,
     hasBackground: payload.hasBackground,
     backgroundColor: /^#[0-9a-fA-F]{6}$/.test(payload.backgroundColor) ? payload.backgroundColor : '#00FFF4',
     volumeAlpha: clampNumber(payload.volumeAlpha, 0, 100, 40),
@@ -1586,12 +1511,19 @@ function sanitizeSettingsPayload(payload: Partial<AppSettingsPayload>): AppSetti
 
   return {
     appearanceTheme: normalizeAppearanceTheme(payload.appearanceTheme),
+    searchEngine: normalizeSearchEngine(payload.searchEngine),
     backgroundBlur: normalizeSettingNumber(payload.backgroundBlur),
     backgroundDim: normalizeSettingNumber(payload.backgroundDim),
     checkUpdatesOnOpen: normalizeCheckUpdatesOnOpen(payload.checkUpdatesOnOpen),
     weatherLocation: payload.weatherLocation.trim() || DEFAULT_APP_SETTINGS.weatherLocation,
     background: normalizeBackground(payload.background),
   }
+}
+
+function normalizeSearchEngine(value: unknown): AppSettingsPayload['searchEngine'] {
+  return value === 'google' || value === 'yandex' || value === 'duckduckgo' || value === 'bing'
+    ? value
+    : DEFAULT_APP_SETTINGS.searchEngine
 }
 
 function normalizeAppearanceTheme(value: AppSettingsPayload['appearanceTheme'] | undefined) {
@@ -1669,4 +1601,45 @@ function sendJson(res: ServerResponse, status: number, payload: unknown) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(payload))
+}
+
+async function requestSearchSuggestions(engine: string, query: string): Promise<string[]> {
+  const upstreamUrl = buildSearchSuggestionsUrl(engine, query)
+  const response = await fetch(upstreamUrl, {
+    headers: { 'User-Agent': 'Mozilla/5.0 Launey/0.1.5' },
+    signal: AbortSignal.timeout(5000),
+  })
+
+  if (!response.ok) {
+    return []
+  }
+
+  const payload = (await response.json()) as unknown
+  const entries =
+    engine === 'duckduckgo' && Array.isArray(payload)
+      ? payload.map((entry) =>
+          entry && typeof entry === 'object' && 'phrase' in entry ? entry.phrase : entry,
+        )
+      : Array.isArray(payload) && Array.isArray(payload[1])
+        ? payload[1]
+        : []
+
+  return entries
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    .slice(0, 6)
+}
+
+function buildSearchSuggestionsUrl(engine: string, query: string) {
+  const encodedQuery = encodeURIComponent(query)
+
+  switch (engine) {
+    case 'yandex':
+      return `https://suggest.yandex.ru/suggest-ya.cgi?v=4&part=${encodedQuery}`
+    case 'duckduckgo':
+      return `https://duckduckgo.com/ac/?q=${encodedQuery}`
+    case 'bing':
+      return `https://api.bing.com/osjson.aspx?query=${encodedQuery}`
+    default:
+      return `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodedQuery}`
+  }
 }

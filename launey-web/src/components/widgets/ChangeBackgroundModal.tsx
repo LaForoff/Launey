@@ -2,6 +2,8 @@ import { type ChangeEvent, type FormEvent, useId, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X } from '@phosphor-icons/react'
 import type { SpaceBackground } from '../../types/space'
+import { uploadBackground } from '../../lib/backgroundApi'
+import { getRecommendedBackgroundDim } from '../../lib/backgroundReadability'
 import { Switch } from '../ui/Switch'
 import { ModalPortal } from './ModalPortal'
 import {
@@ -17,7 +19,11 @@ interface ChangeBackgroundModalProps {
   isOpen: boolean
   initialValue?: SpaceBackground
   onClose: () => void
-  onSave: (payload: { background: SpaceBackground; applyToAllSpaces: boolean }) => void
+  onSave: (payload: {
+    background: SpaceBackground
+    applyToAllSpaces: boolean
+    recommendedDim?: number
+  }) => void
   onNotify: (type: 'success' | 'error', text: string) => void
   notifyOnSuccess?: boolean
   showApplyToAllToggle?: boolean
@@ -57,7 +63,11 @@ export function ChangeBackgroundModal({
 interface ChangeBackgroundModalFormProps {
   initialValue?: SpaceBackground
   onClose: () => void
-  onSave: (payload: { background: SpaceBackground; applyToAllSpaces: boolean }) => void
+  onSave: (payload: {
+    background: SpaceBackground
+    applyToAllSpaces: boolean
+    recommendedDim?: number
+  }) => void
   onNotify: (type: 'success' | 'error', text: string) => void
   shouldReduceMotion: boolean
   notifyOnSuccess: boolean
@@ -78,9 +88,12 @@ function ChangeBackgroundModalForm({
   const [url, setUrl] = useState(getInitialUrl(initialValue))
   const [localBackground, setLocalBackground] = useState<SpaceBackground | null>(null)
   const [fileName, setFileName] = useState('')
+  const [recommendedDim, setRecommendedDim] = useState<number | undefined>()
   const [hasError, setHasError] = useState(false)
+  const [isFileUploading, setIsFileUploading] = useState(false)
+  const [isPreparingVideo, setIsPreparingVideo] = useState(false)
   const [applyToAllSpaces, setApplyToAllSpaces] = useState(false)
-  const canSave = url.trim().length > 0 || Boolean(localBackground)
+  const canSave = !isFileUploading && (url.trim().length > 0 || Boolean(localBackground))
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -90,8 +103,13 @@ function ChangeBackgroundModalForm({
     }
 
     if (localBackground) {
-      onSave({ background: localBackground, applyToAllSpaces })
-      if (notifyOnSuccess) {
+      onSave({ background: localBackground, applyToAllSpaces, recommendedDim })
+      if (recommendedDim !== undefined && recommendedDim > 0) {
+        onNotify(
+          'success',
+          'Фон оптимизирован для лучшей читаемости. Затемнение можно изменить в настройках оформления.',
+        )
+      } else if (notifyOnSuccess) {
         onNotify('success', 'Фон обновлён')
       }
       return
@@ -112,8 +130,9 @@ function ChangeBackgroundModalForm({
     }
   }
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
+    event.target.value = ''
 
     if (!file) {
       return
@@ -124,35 +143,42 @@ function ChangeBackgroundModalForm({
     if (file.size > MAX_LOCAL_BACKGROUND_SIZE) {
       setFileName('')
       setLocalBackground(null)
+      setRecommendedDim(undefined)
       onNotify('error', 'Файл слишком большой. Максимальный размер 500 МБ.')
       return
     }
 
-    const reader = new FileReader()
+    setIsPreparingVideo(file.type.startsWith('video/'))
+    setIsFileUploading(true)
 
-    reader.addEventListener('load', () => {
-      const value = typeof reader.result === 'string' ? reader.result : ''
-
-      if (!value) {
-        return
-      }
-
+    try {
+      const [value, nextRecommendedDim] = await Promise.all([
+        uploadBackground(file),
+        getRecommendedBackgroundDim(file).catch(() => undefined),
+      ])
       setFileName(file.name)
       setUrl('')
+      setRecommendedDim(nextRecommendedDim)
       setLocalBackground({
         type: file.type.startsWith('video/') ? 'local-video' : 'local-image',
         value,
         fileName: file.name,
       })
-    })
-
-    reader.readAsDataURL(file)
+    } catch {
+      setFileName('')
+      setLocalBackground(null)
+      setRecommendedDim(undefined)
+      onNotify('error', 'Не удалось сохранить файл фона')
+    } finally {
+      setIsFileUploading(false)
+    }
   }
 
   function handleUrlChange(value: string) {
     setUrl(value)
     setLocalBackground(null)
     setFileName('')
+    setRecommendedDim(undefined)
     setHasError(false)
   }
 
@@ -190,15 +216,33 @@ function ChangeBackgroundModalForm({
             inputMode="url"
             autoComplete="off"
           />
-          <label className="background-file-button" htmlFor={fileId}>
+          <label
+            className={
+              isFileUploading
+                ? 'background-file-button is-preparing'
+                : 'background-file-button'
+            }
+            htmlFor={fileId}
+            aria-busy={isFileUploading}
+          >
             <input
               id={fileId}
               className="background-file-input"
               type="file"
               accept="image/*,video/mp4,video/webm,video/quicktime"
-              onChange={handleFileChange}
+              disabled={isFileUploading}
+              onChange={(event) => {
+                void handleFileChange(event)
+              }}
             />
-            {fileName || 'Выбрать на компьютере'}
+            {isFileUploading ? (
+              <span className="background-file-progress">
+                <span className="background-file-spinner" aria-hidden="true" />
+                {isPreparingVideo ? 'Сохраняем видео…' : 'Подготовка фотографии…'}
+              </span>
+            ) : (
+              fileName || 'Выбрать на компьютере'
+            )}
           </label>
           {showApplyToAllToggle ? (
             <div

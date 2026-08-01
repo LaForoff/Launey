@@ -26,17 +26,19 @@
 
 .empty-space-state {
   position: relative;
+  isolation: isolate;
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 14px;
+  gap: 10px;
+  width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 24px 28px;
+  padding: 32px;
   box-sizing: border-box;
   overflow: visible;
   border: 0;
-  border-radius: 38px;
+  border-radius: 16px;
   background: transparent;
   box-shadow: none;
   -webkit-backdrop-filter: none;
@@ -44,7 +46,21 @@
 }
 
 .empty-space-state::before {
-  content: none;
+  position: absolute;
+  inset: -35% -20%;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 32% 36% at center,
+      rgba(5, 8, 14, 0.42) 0%,
+      rgba(5, 8, 14, 0.34) 16%,
+      rgba(5, 8, 14, 0.22) 32%,
+      rgba(5, 8, 14, 0.1) 48%,
+      rgba(5, 8, 14, 0.03) 62%,
+      rgba(5, 8, 14, 0) 100%
+    );
+  pointer-events: none;
+  content: '';
 }
 
 .empty-space-state::after {
@@ -117,7 +133,7 @@
 .empty-space-state__content p {
   margin: 0;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
   line-height: 1.25;
   letter-spacing: -0.03em;
   color: rgba(255, 255, 255, 0.58);
@@ -181,7 +197,6 @@
   .empty-space-state {
     gap: 12px;
     padding: 20px 18px;
-    border-radius: 30px;
   }
 
   .empty-space-state__icon-button {
@@ -208,7 +223,6 @@
   .empty-space-state {
     gap: 10px;
     padding: 16px 14px;
-    border-radius: 26px;
   }
 
   .empty-space-state__icon-button {

@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState, type CSSProperties, type TransitionEvent } from 'react'
 import { APP_VERSION } from '../../config/buildInfo'
+import { extractBackgroundPalette } from '../../lib/backgroundPalette'
+import { loadAppSettingsFromLocalStorage } from '../../lib/settingsApi'
 import { DottedLogo } from '../ui/DottedLogo'
+import { FlowingGradientBackground } from '../widgets/FlowingGradientBackground'
 import './StartupSplash.css'
 
 const SPLASH_DEBUG = true
-const PATH = [0, 4, 8, 12, 13, 14, 15] as const
+const PATH = [0, 3, 6, 7, 8] as const
 const DOT_STAGGER_MS = SPLASH_DEBUG ? 90 : 90
 const DOT_REVEAL_DURATION_MS = SPLASH_DEBUG ? 180 : 180
 const LOGO_HOLD_MS = SPLASH_DEBUG ? 900 : 800
-const MIN_SPLASH_MS = SPLASH_DEBUG ? 1800 : 1600
+const MIN_SPLASH_MS = SPLASH_DEBUG ? 2600 : 2400
 const EXIT_DELAY_MS = SPLASH_DEBUG ? 120 : 80
-const EXIT_DURATION_MS = SPLASH_DEBUG ? 820 : 680
+const EXIT_DURATION_MS = SPLASH_DEBUG ? 520 : 480
 const BUILD_LABEL = `ver: ${APP_VERSION}`
 
 interface StartupSplashProps {
@@ -20,13 +23,37 @@ interface StartupSplashProps {
 }
 
 export function StartupSplash({ appReady, onRevealStart, onFinish }: StartupSplashProps) {
+  const [startupBackground] = useState(() => loadAppSettingsFromLocalStorage()?.background ?? { type: 'default' as const })
   const [builtCount, setBuiltCount] = useState(0)
   const [logoRevealDone, setLogoRevealDone] = useState(false)
   const [minSplashDone, setMinSplashDone] = useState(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [flowColors, setFlowColors] = useState<readonly string[] | undefined>()
+  const [isFlowPaletteReady, setIsFlowPaletteReady] = useState(startupBackground.type === 'default')
   const hasStartedRevealRef = useRef(false)
   const isIdle = logoRevealDone && !isTransitioning
   const canExitSplash = logoRevealDone && appReady && minSplashDone
+
+  useEffect(() => {
+    let isCancelled = false
+    if (startupBackground.type === 'default') {
+      return
+    }
+
+    void extractBackgroundPalette(startupBackground).then((palette) => {
+      if (isCancelled) {
+        return
+      }
+      if (palette) {
+        setFlowColors(palette)
+      }
+      setIsFlowPaletteReady(true)
+    })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [startupBackground])
 
   useEffect(() => {
     const timers: number[] = []
@@ -99,9 +126,11 @@ export function StartupSplash({ appReady, onRevealStart, onFinish }: StartupSpla
       onTransitionEnd={handleTransitionEnd}
     >
       <div className="startup-splash__background" />
+      {isFlowPaletteReady ? <FlowingGradientBackground colors={flowColors} /> : null}
       <div className="startup-splash__center">
         <DottedLogo
           className="startup-splash__logo-grid"
+          gridSize={3}
           revealCount={builtCount}
           revealDurationMs={DOT_REVEAL_DURATION_MS}
           isIdle={isIdle}

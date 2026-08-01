@@ -13,6 +13,7 @@ interface FolderContextMenuProps {
   onEdit: () => void
   onMoveToSpace: (spaceId: string) => void
   onDelete: () => void
+  editLabel?: string
 }
 
 export function FolderContextMenu({
@@ -23,6 +24,7 @@ export function FolderContextMenu({
   onEdit,
   onMoveToSpace,
   onDelete,
+  editLabel = 'Изменить',
 }: FolderContextMenuProps) {
   const moveButtonRef = useRef<HTMLButtonElement | null>(null)
   const closeTimerRef = useRef<number | null>(null)
@@ -71,7 +73,7 @@ export function FolderContextMenu({
           <span className="context-menu-icon">
             <NotePencil size={13} weight="fill" />
           </span>
-          Изменить
+          {editLabel}
         </span>
       </button>
       <div

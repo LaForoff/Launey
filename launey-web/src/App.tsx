@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Shell } from './components/layout/Shell'
 import { StartupSplash } from './components/splash/StartupSplash'
-import { PostUpdateModal } from './components/widgets/PostUpdateModal'
 import { UpdateAvailableModal } from './components/widgets/UpdateAvailableModal'
+import { WhatsNewOverlay } from './components/widgets/WhatsNewOverlay'
 import { spaces } from './data/spaces'
 import {
   DEFAULT_APP_SETTINGS,
@@ -11,7 +11,6 @@ import {
 import {
   clearUpdateReminder,
   downloadUpdateAsset,
-  getCompletedUpdateRelease,
   githubUpdateProvider,
   setUpdateReminder,
   shouldSkipUpdateReminder,
@@ -22,14 +21,30 @@ import type { SettingsSection } from './components/widgets/SettingsWindow'
 import './App.css'
 import './styles/global.css'
 
+type WhatsNewOpenOptions = {
+  initialSlide?: number
+  markAsSeen?: boolean
+}
+
+type WhatsNewRequest = {
+  key: number
+  markAsSeen: boolean
+}
+
+declare global {
+  interface Window {
+    launeyDebug?: {
+      openWhatsNew?: (initialSlide?: number) => void
+    }
+  }
+}
+
 function App() {
   const [isSplashAnimationDone, setIsSplashAnimationDone] = useState(false)
   const [isAppRevealStarted, setIsAppRevealStarted] = useState(false)
   const [isBackgroundReady, setIsBackgroundReady] = useState(false)
   const [availableUpdate, setAvailableUpdate] = useState<UpdateRelease | null>(null)
-  const [completedUpdate, setCompletedUpdate] = useState<UpdateRelease | null>(() =>
-    getCompletedUpdateRelease(),
-  )
+  const [whatsNewRequest, setWhatsNewRequest] = useState<WhatsNewRequest | null>(null)
   const settingsOpenRequest: {
     key: number
     section: SettingsSection
@@ -40,6 +55,40 @@ function App() {
     [isBackgroundReady, isSplashAnimationDone],
   )
   const shouldAutoFocusSearch = isAppRevealStarted && !isSplashVisible
+  const openWhatsNew = useCallback(({ initialSlide = 0, markAsSeen = false }: WhatsNewOpenOptions = {}) => {
+    void initialSlide
+    setWhatsNewRequest((currentRequest) => ({
+      key: (currentRequest?.key ?? 0) + 1,
+      markAsSeen,
+    }))
+  }, [])
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+
+    if (searchParams.get('showWhatsNew') === '1') {
+      openWhatsNew({ initialSlide: 0, markAsSeen: false })
+    }
+  }, [openWhatsNew])
+
+  useEffect(() => {
+    const previousDebug = window.launeyDebug
+    window.launeyDebug = {
+      ...previousDebug,
+      openWhatsNew: (initialSlide = 0) => {
+        openWhatsNew({ initialSlide, markAsSeen: false })
+      },
+    }
+
+    return () => {
+      if (previousDebug) {
+        window.launeyDebug = previousDebug
+        return
+      }
+
+      delete window.launeyDebug
+    }
+  }, [openWhatsNew])
 
   useEffect(() => {
     const settings = loadAppSettingsFromLocalStorage()
@@ -157,6 +206,7 @@ function App() {
           activeSpaceIndex={0}
           autoFocusSearch={shouldAutoFocusSearch}
           settingsOpenRequest={settingsOpenRequest}
+          onOpenWhatsNew={() => openWhatsNew({ initialSlide: 0, markAsSeen: false })}
         />
       </div>
       {isSplashVisible ? (
@@ -174,8 +224,13 @@ function App() {
           onClose={() => setAvailableUpdate(null)}
         />
       ) : null}
-      {!isSplashVisible && !availableUpdate && completedUpdate ? (
-        <PostUpdateModal release={completedUpdate} onClose={() => setCompletedUpdate(null)} />
+      {!isSplashVisible && whatsNewRequest ? (
+        <WhatsNewOverlay
+          key={whatsNewRequest.key}
+          onClose={() => {
+            setWhatsNewRequest(null)
+          }}
+        />
       ) : null}
     </>
   )

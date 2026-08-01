@@ -1,64 +1,119 @@
 .folder-modal-backdrop {
   z-index: 24;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
-.folder-modal {
-  width: min(688px, calc(100vw - 40px));
-  height: min(620px, calc(100svh - 48px));
-  padding: 12px 12px 16px 24px;
+.folder-modal-backdrop::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: transparent;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  pointer-events: none;
+  content: '';
+}
+
+.folder-modal-shell {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(600px, calc(100vw - 40px));
+  height: min(650px, calc(100svh - 48px));
+  padding: 12px 12px 24px 24px;
+  color: var(--modal-text-primary, rgba(255, 255, 255, 0.94));
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.folder-modal-shell > .folder-modal {
+  --modal-surface-background: rgba(102, 102, 102, 0.24);
+  --modal-surface-border: rgba(255, 255, 255, 0.12);
+  --modal-surface-blur: none;
+  --modal-surface-sheen: transparent;
+  --modal-shadow: 0 18px 56px rgba(0, 0, 0, 0.34);
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border-radius: 26px;
+  transform: translateZ(0);
+  will-change: opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+}
+
+html[data-theme='light'] .folder-modal-shell > .folder-modal {
+  --modal-surface-background: rgba(102, 102, 102, 0.24);
+  --modal-surface-border: rgba(255, 255, 255, 0.12);
+  --modal-surface-blur: none;
+  --modal-surface-sheen: transparent;
+  --modal-shadow: 0 18px 56px rgba(0, 0, 0, 0.34);
 }
 
 .folder-modal-header {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 36px;
-  padding-right: 40px;
+  margin-bottom: 23px;
+  padding-right: 0;
 }
 
 .folder-modal-title-group {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding-top: 8px;
+}
+
+.folder-modal-header .modal-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+html[data-theme='light'] .folder-modal-shell {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+html[data-theme='light'] .folder-modal-shell .modal-close {
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme='light'] .folder-modal-shell .modal-close:active {
+  color: rgba(255, 255, 255, 0.96);
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .folder-modal-header h2 {
   margin: 0;
-  padding-top: 8px;
+  padding-top: 0;
   font-size: 20px;
   line-height: normal;
   font-weight: 600;
   letter-spacing: 0;
 }
 
-.folder-modal-menu-trigger {
-  display: inline-grid;
-  width: 32px;
-  height: 32px;
-  margin-top: 2px;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 0;
-  cursor: pointer;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-.folder-modal-menu-trigger:active {
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(255, 255, 255, 0.14);
-}
-
 .folder-modal-content {
-  height: calc(100% - 42px);
-  padding: 0 16px 16px 0;
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  height: calc(100% - 55px);
+  padding: 0 12px 0 0;
   overflow-y: auto;
   overflow-x: hidden;
+  contain: layout paint;
+  isolation: isolate;
+  transform: translateZ(0);
+  will-change: transform;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -69,16 +124,33 @@
 
 .folder-modal-grid {
   display: grid;
-  grid-template-columns: repeat(6, 86px);
-  column-gap: 24px;
-  row-gap: 38px;
+  grid-template-columns: repeat(5, 86px);
+  column-gap: 0;
+  row-gap: 23px;
   align-items: start;
-  justify-content: start;
+  justify-content: space-between;
+}
+
+.folder-modal-grid .tile {
+  width: 86px;
+  height: 115px;
+}
+
+.folder-modal-grid .tile-icon {
+  width: 86px;
+  height: 86px;
+}
+
+.folder-modal-grid .tile-title {
+  top: 94px;
+  width: 118px;
+  max-width: 118px;
+  font-size: 15px;
 }
 
 @media (max-width: 760px) {
-  .folder-modal {
-    width: min(578px, calc(100vw - 40px));
+  .folder-modal-shell {
+    width: min(600px, calc(100vw - 40px));
   }
 
   .folder-modal-grid {
@@ -87,9 +159,9 @@
 }
 
 @media (max-width: 620px) {
-  .folder-modal {
-    width: min(468px, calc(100vw - 32px));
-    height: min(620px, calc(100svh - 32px));
+  .folder-modal-shell {
+    width: min(409px, calc(100vw - 32px));
+    height: min(520px, calc(100svh - 32px));
   }
 
   .folder-modal-grid {
@@ -98,8 +170,8 @@
 }
 
 @media (max-width: 480px) {
-  .folder-modal {
-    width: min(358px, calc(100vw - 24px));
+  .folder-modal-shell {
+    width: min(313px, calc(100vw - 24px));
   }
 
   .folder-modal-grid {

@@ -1,0 +1,225 @@
+.release-changelog-backdrop {
+  z-index: 46;
+}
+
+.release-changelog-window {
+  display: grid;
+  grid-template-columns: minmax(0, 285px) minmax(0, 480px);
+  width: min(833px, calc(100vw - 48px));
+  height: min(500px, calc(100svh - 48px));
+  box-sizing: border-box;
+  gap: 30px;
+  padding: 6px 6px 6px 32px;
+  border-radius: 26px;
+}
+
+.release-changelog-sidebar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 26px 0 20px;
+}
+
+.release-changelog-logo {
+  display: block;
+  width: fit-content;
+  height: 24px;
+}
+
+.release-changelog-logo img {
+  display: block;
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.release-changelog-gradient-light {
+  display: none;
+}
+
+.release-changelog-intro {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
+}
+
+.release-changelog-intro p,
+.release-changelog-intro h2 {
+  margin: 0;
+}
+
+.release-changelog-intro p {
+  color: var(--modal-text-secondary);
+  font-size: 13px;
+  font-weight: 520;
+  line-height: 1.45;
+}
+
+.release-changelog-intro h2 {
+  color: var(--modal-text-primary);
+  font-size: 23px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.release-changelog-ready.modal-button {
+  width: fit-content;
+  min-width: 145px;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 18px;
+}
+
+.release-changelog-feed {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #1f1f1f;
+  border-radius: 20px;
+  background: #191919;
+  isolation: isolate;
+}
+
+.release-changelog-gradient,
+.release-changelog-feed-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.release-changelog-gradient {
+  z-index: 0;
+  overflow: hidden;
+}
+
+.release-changelog-gradient .flowing-gradient-background {
+  inset: -30%;
+  z-index: 0;
+  background: #191919;
+}
+
+.release-changelog-gradient .flowing-gradient-blob {
+  filter: blur(62px) saturate(1.4);
+  opacity: 0.72;
+}
+
+.release-changelog-feed-shade {
+  z-index: 1;
+  background: rgba(15, 15, 15, 0.28);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.release-changelog-close {
+  z-index: 5;
+}
+
+.release-changelog-feed-title {
+  position: absolute;
+  top: 30px;
+  right: 62px;
+  left: 30px;
+  z-index: 2;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.3;
+  transition: opacity 120ms linear;
+  pointer-events: none;
+}
+
+.release-changelog-scroll {
+  position: relative;
+  z-index: 3;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 146px 30px 30px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.release-changelog-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.release-changelog-messages {
+  display: grid;
+  gap: 12px;
+}
+
+.release-changelog-message {
+  box-sizing: border-box;
+  min-height: 92px;
+  padding: 16px 20px;
+  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  border-radius: 20px;
+  background: rgba(25, 25, 25, 0.82);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+html[data-theme='light'] .release-changelog-gradient-dark {
+  display: none;
+}
+
+html[data-theme='light'] .release-changelog-gradient-light {
+  display: block;
+}
+
+html[data-theme='light'] .release-changelog-feed {
+  border-color: rgba(255, 255, 255, 1);
+  background: #fff;
+}
+
+html[data-theme='light'] .release-changelog-gradient .flowing-gradient-background {
+  background: #fff8ec;
+}
+
+html[data-theme='light'] .release-changelog-gradient .flowing-gradient-blob {
+  filter: blur(64px) saturate(1.04);
+  mix-blend-mode: multiply;
+  opacity: 0.48;
+}
+
+html[data-theme='light'] .release-changelog-feed-shade {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+html[data-theme='light'] .release-changelog-feed-title {
+  color: rgba(28, 28, 30, 0.66);
+}
+
+html[data-theme='light'] .release-changelog-message {
+  color: rgba(28, 28, 30, 0.9);
+  border-color: rgba(255, 255, 255, 1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+@media (max-width: 760px) {
+  .release-changelog-window {
+    grid-template-columns: minmax(210px, 0.8fr) minmax(0, 1.2fr);
+    gap: 18px;
+    padding-left: 24px;
+  }
+
+  .release-changelog-feed-title {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .release-changelog-feed-title {
+    transition: none;
+  }
+}

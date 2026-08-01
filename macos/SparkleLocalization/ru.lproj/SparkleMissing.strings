@@ -1,45 +1,98 @@
-/* Missing Russian localizations in Sparkle 2.9.3. */
+/* Launey Russian copy overrides for Sparkle 2.9.3. */
 
-"%1$@ %2$@ has been downloaded and is ready to use! This is an important update; would you like to install it and relaunch %1$@ now?" = "Важное обновление %1$@ версии %2$@ загружено и готово к использованию. Установить его и перезапустить %1$@ сейчас?";
-"%1$@ %2$@ is available but this update requires a new Apple silicon Mac." = "Версия %1$@ %2$@ доступна, но для этого обновления требуется новый Mac с Apple silicon.";
-"%1$@ %2$@ is available but your macOS version is too new for this update. This update only supports up to macOS %3$@." = "Версия %1$@ %2$@ доступна, но ваша версия macOS слишком новая для этого обновления. Поддерживается macOS не новее %3$@.";
-"%1$@ %2$@ is available but your macOS version is too old to install it. At least macOS %3$@ is required." = "Версия %1$@ %2$@ доступна, но ваша версия macOS слишком старая для её установки. Требуется macOS %3$@ или новее.";
-"%1$@ can’t be updated if it’s running from the location it was downloaded to." = "%1$@ нельзя обновить, пока приложение запущено из папки загрузки.";
-"%@ %@ is now available—you have %@. This is an important update; would you like to download it now?" = "Доступно важное обновление %1$@ %2$@ — у вас установлена версия %3$@. Загрузить его сейчас?";
-"%@ %@ is now available—you have %@. Would you like to learn more about this update on the web?" = "Доступна версия %1$@ %2$@ — у вас установлена версия %3$@. Узнать больше об этом обновлении в интернете?";
-"%@ is now updated to version %@!" = "%1$@ обновлено до версии %2$@!";
-"%@ is now updated!" = "%@ обновлено!";
-"An error occurred while connecting to the installer. Please try again later." = "Произошла ошибка при подключении к установщику. Повторите попытку позже.";
-"An error occurred while downloading the release notes." = "Произошла ошибка при загрузке примечаний к выпуску.";
-"An error occurred while launching the installer. Please try again later." = "Произошла ошибка при запуске установщика. Повторите попытку позже.";
-"An error occurred while running the updater. Please try again later." = "Произошла ошибка при работе программы обновления. Повторите попытку позже.";
-"An error occurred while starting the installer. Please try again later." = "Произошла ошибка при запуске установщика. Повторите попытку позже.";
-"An important update to %@ is ready to install" = "Важное обновление %@ готово к установке";
-"Application Name" = "Название приложения";
-"Application Version" = "Версия приложения";
-"CPU Speed (MHz)" = "Частота процессора (МГц)";
-"CPU Subtype" = "Подтип процессора";
-"CPU Type" = "Тип процессора";
-"CPU is 64-Bit?" = "64-разрядный процессор?";
-"Failed to resume installing update." = "Не удалось продолжить установку обновления.";
+/* Checking and current version */
+"Checking for updates…" = "Проверка обновлений…";
+"You’re up to date!" = "У вас всё обновлено!";
+"%@ %@ is currently the newest version available." = "%1$@ %2$@ — последняя доступная версия.";
+"%@ %@ is currently the newest version available.\n(You are currently running version %@.)" = "%1$@ %2$@ — последняя доступная версия.";
+"OK" = "Готово";
+
+/* Update available */
+"A new version of %@ is available!" = "Доступна новая версия %@";
+"%@ %@ is now available—you have %@. Would you like to download it now?" = "Можно установить версию %2$@. Сейчас используется версия %3$@.";
+"%@ %@ is now available—you have %@. This is an important update; would you like to download it now?" = "Доступно важное обновление до версии %2$@. Рекомендуем установить его сейчас.";
+"%@ %@ is now available—you have %@. Would you like to learn more about this update on the web?" = "Доступна версия %2$@. Подробнее об обновлении можно узнать на сайте.";
+"Install Update" = "Обновить";
+"Learn More…" = "Подробнее";
+"Remind Me Later" = "Позже";
+"Skip This Version" = "Пропустить версию";
+"Cancel" = "Отмена";
+
+/* Downloading */
+"Downloading update…" = "Загрузка обновления…";
+"%@ of %@" = "Загружено %1$@ из %2$@";
+"%@ downloaded" = "Загружено: %@";
+"Cancel Update" = "Отменить";
+"Extracting update…" = "Подготовка обновления…";
+
+/* Ready to install */
+"A new version of %@ is ready to install!" = "Обновление готово";
+"Ready to Install" = "Обновление готово";
+"%1$@ %2$@ has been downloaded and is ready to use! Would you like to install it and relaunch %1$@ now?" = "Версия %2$@ загружена. Для завершения установки %1$@ будет перезапущено.";
+"%1$@ %2$@ has been downloaded and is ready to use! This is an important update; would you like to install it and relaunch %1$@ now?" = "Важное обновление загружено. Для завершения установки %1$@ будет перезапущено.";
+"Install and Relaunch" = "Установить и перезапустить";
 "Install on Quit" = "Установить при завершении";
-"Mac Model" = "Модель Mac";
-"Memory (MB)" = "Память (МБ)";
-"No" = "Нет";
-"Number of CPUs" = "Количество процессоров";
-"OS Version" = "Версия ОС";
-"Preferred Language" = "Предпочитаемый язык";
-"Quit %1$@, move it into your Applications folder, relaunch it from there and try again." = "Завершите %1$@, переместите приложение в папку «Программы», снова запустите его и повторите попытку.";
-"The installation failed due to not having permission to write the new update." = "Не удалось установить обновление: нет разрешения на запись новой версии.";
-"The release notes is improperly signed and could not be validated. Please contact the app developer for more information." = "Не удалось проверить подпись примечаний к выпуску. Обратитесь к разработчику приложения.";
-"The update feed is improperly signed and could not be validated. Please try again later or contact the app developer." = "Не удалось проверить подпись канала обновлений. Повторите попытку позже или обратитесь к разработчику приложения.";
-"The update is improperly signed and could not be validated. Please try again later or contact the app developer." = "Не удалось проверить подпись обновления. Повторите попытку позже или обратитесь к разработчику приложения.";
-"The updater failed to start. Please verify you have the latest version of %@ and contact the app developer if the issue still persists. Check the Console logs for more information." = "Не удалось запустить программу обновления. Убедитесь, что установлена последняя версия %@. Если проблема сохраняется, обратитесь к разработчику приложения. Подробности доступны в приложении «Консоль».";
-"Unable to Check For Updates" = "Не удалось проверить обновления";
+
+/* Installing and completion */
+"Installing update…" = "Установка обновления…";
+"Updating %@" = "Обновление %@…";
 "Update Installed" = "Обновление установлено";
+"%@ is now updated to version %@!" = "Установлена версия %2$@.";
+"%@ is now updated!" = "Установлена последняя версия %@.";
+
+/* Automatic updates */
+"Check for updates automatically?" = "Проверять обновления автоматически?";
+"Should %1$@ automatically check for updates? You can always check for updates manually from the %1$@ menu." = "%1$@ может автоматически проверять наличие новых версий. Проверку также можно запустить вручную в любое время.";
+"Check Automatically" = "Проверять автоматически";
+"Don’t Check" = "Не проверять";
+"Automatically download and install updates" = "Автоматически загружать и устанавливать обновления";
+"Automatically download and install updates in the future" = "Автоматически загружать и устанавливать обновления";
+
+/* General errors */
+"Unable to Check For Updates" = "Не удалось проверить обновления";
+"Update Error!" = "Не удалось обновить приложение";
+"An error occurred in retrieving update information. Please try again later." = "Проверьте подключение к интернету и повторите попытку.";
+"An error occurred while downloading the update. Please try again later." = "Не удалось загрузить обновление. Повторите попытку позже.";
+"An error occurred while downloading the release notes." = "Не удалось загрузить описание обновления. Повторите попытку позже.";
+"An error occurred while extracting the archive. Please try again later." = "Не удалось подготовить обновление. Загрузите его ещё раз.";
+"An error occurred while connecting to the installer. Please try again later." = "Не удалось подключиться к установщику. Повторите попытку позже.";
+"An error occurred while launching the installer. Please try again later." = "Не удалось запустить установщик. Повторите попытку позже.";
+"An error occurred while starting the installer. Please try again later." = "Не удалось запустить установщик. Повторите попытку позже.";
+"An error occurred while running the updater. Please try again later." = "Не удалось установить обновление. Повторите попытку позже.";
+"Failed to resume installing update." = "Не удалось продолжить установку. Повторите попытку.";
+"An error occurred while parsing the update feed." = "Не удалось получить сведения об обновлении.";
+
+/* Application location and permissions */
+"%1$@ can’t be updated because it was opened from a read-only or a temporary location." = "Чтобы установить обновление, переместите %1$@ в папку «Программы» и откройте снова.";
+"%1$@ can’t be updated if it’s running from the location it was downloaded to." = "Чтобы установить обновление, переместите %1$@ из папки загрузок в папку «Программы» и откройте снова.";
+"Use Finder to copy %1$@ to the Applications folder, relaunch it from there, and try again." = "Переместите %1$@ в папку «Программы», откройте снова и повторите попытку.";
+"Quit %1$@, move it into your Applications folder, relaunch it from there and try again." = "Завершите %1$@, переместите приложение в папку «Программы», откройте снова и повторите попытку.";
+"The installation failed due to not having permission to write the new update." = "Нет разрешения на изменение файлов. Разрешите доступ в Системных настройках и повторите попытку.";
+"You may need to allow modifications from %1$@ in System Settings under Privacy & Security and App Management to install future updates." = "Разрешите изменения от %1$@ в разделе «Конфиденциальность и безопасность» → «Управление приложениями» Системных настроек.";
+
+/* Compatibility */
+"Your Mac is too old" = "Для обновления требуется другой Mac";
+"Your macOS version is too old" = "Требуется более новая версия macOS";
+"Your macOS version is too new" = "Эта версия macOS не поддерживается";
+"%1$@ %2$@ is available but this update requires a new Apple silicon Mac." = "Версия %2$@ доступна только для Mac с Apple silicon.";
+"%1$@ %2$@ is available but your macOS version is too old to install it. At least macOS %3$@ is required." = "Для версии %2$@ требуется macOS %3$@ или новее.";
+"%1$@ %2$@ is available but your macOS version is too new for this update. This update only supports up to macOS %3$@." = "Версия %2$@ поддерживает macOS до версии %3$@.";
+
+/* Signature validation */
+"The release notes is improperly signed and could not be validated. Please contact the app developer for more information." = "Не удалось проверить описание обновления. Повторите попытку позже.";
+"The update feed is improperly signed and could not be validated. Please try again later or contact the app developer." = "Не удалось проверить обновление. Повторите попытку позже.";
+"The update is improperly signed and could not be validated. Please try again later or contact the app developer." = "Не удалось проверить обновление. Повторите попытку позже.";
+"The updater failed to start. Please verify you have the latest version of %@ and contact the app developer if the issue still persists. Check the Console logs for more information." = "Не удалось запустить обновление. Повторите попытку позже.";
+
+/* Other labels used by Sparkle */
+"Software Update" = "Обновление";
 "Version History" = "История версий";
+"An important update to %@ is ready to install" = "Важное обновление %@ готово";
+"Include anonymous system profile" = "Отправлять анонимные сведения о системе";
 "Yes" = "Да";
-"You may need to allow modifications from %1$@ in System Settings under Privacy & Security and App Management to install future updates." = "Для установки будущих обновлений может потребоваться разрешить изменения от %1$@ в разделе «Конфиденциальность и безопасность» → «Управление приложениями» Системных настроек.";
-"Your Mac is too old" = "Ваш Mac слишком старый";
-"Your macOS version is too new" = "Ваша версия macOS слишком новая";
-"Your macOS version is too old" = "Ваша версия macOS слишком старая";
+"No" = "Нет";
+"Application Name" = "Приложение";
+"Application Version" = "Версия";
+"OS Version" = "Версия macOS";
+"Mac Model" = "Модель Mac";
+"Preferred Language" = "Основной язык";

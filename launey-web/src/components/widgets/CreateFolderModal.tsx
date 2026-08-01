@@ -248,16 +248,7 @@ function SelectableUrlCard({ tile, isSelected, onToggle }: SelectableUrlCardProp
         ]
           .filter(Boolean)
           .join(' ')}
-        imageClassName={
-          hasCustomizedIcon
-            ? undefined
-            : icon.type === 'image' && icon.isAppIcon
-              ? 'tile-icon-image tile-icon-image-app'
-              : icon.type === 'image'
-                ? 'tile-icon-image'
-                : 'tile-icon-text-image'
-        }
-        contentFit={hasCustomizedIcon || icon.type !== 'image' ? 'contain' : 'cover'}
+        contentFit="contain"
         src={icon.type === 'image' ? icon.value : textIconDataUrl ?? ''}
         customization={tile.iconCustomization}
         showInlineBorder={tile.addFrame !== false}

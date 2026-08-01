@@ -157,7 +157,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/zsh;
-			shellScript = "set -euo pipefail\n\nSPARKLE_FRAMEWORK=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework\"\nSPARKLE_RU_STRINGS=\"${SPARKLE_FRAMEWORK}/Versions/Current/Resources/ru.lproj/Sparkle.strings\"\nMISSING_RU_STRINGS=\"${SRCROOT}/SparkleLocalization/ru.lproj/SparkleMissing.strings\"\n\nif [[ ! -f \"${SPARKLE_RU_STRINGS}\" ]]; then\n    echo \"error: Sparkle Russian localization was not found at ${SPARKLE_RU_STRINGS}\"\n    exit 1\nfi\n\nif [[ ! -f \"${MISSING_RU_STRINGS}\" ]]; then\n    echo \"error: Supplemental Sparkle localization was not found at ${MISSING_RU_STRINGS}\"\n    exit 1\nfi\n\n/usr/libexec/PlistBuddy -c \"Merge '${MISSING_RU_STRINGS}'\" \"${SPARKLE_RU_STRINGS}\"\n\nif [[ \"${CODE_SIGNING_ALLOWED:-NO}\" == \"YES\" && -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]]; then\n    /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"${SPARKLE_FRAMEWORK}\"\nfi\n\necho \"Completed Sparkle Russian localization: ${SPARKLE_RU_STRINGS}\"\n";
+			shellScript = "\"${SRCROOT}/scripts/complete-sparkle-localization.sh\"\n";
 		};
 		0EE154902FE2000000FC7AA5 /* Build and Embed Web Frontend */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -337,7 +337,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 4A3545UFH7;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -349,7 +349,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = designby4roff.Launey;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -369,7 +369,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 4A3545UFH7;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -381,7 +381,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = designby4roff.Launey;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

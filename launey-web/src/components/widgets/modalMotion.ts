@@ -1,6 +1,6 @@
 export const MODAL_EASE = [0.2, 0.8, 0.2, 1] as const
 export const MODAL_EXIT_EASE = [0.4, 0, 1, 1] as const
-export const MODAL_DURATION = 0.22
+export const MODAL_DURATION = 0.52
 
 export function getModalBackdropAnimation(shouldReduceMotion: boolean) {
   if (shouldReduceMotion) {
@@ -20,7 +20,11 @@ export function getModalBackdropAnimation(shouldReduceMotion: boolean) {
 
 export function getFolderBackdropAnimation(shouldReduceMotion: boolean) {
   if (shouldReduceMotion) {
-    return getModalBackdropAnimation(true)
+    return {
+      initial: { opacity: 1 },
+      animate: { opacity: 1 },
+      exit: { opacity: 0, transition: { duration: 0.11 } },
+    }
   }
 
   return {
@@ -29,9 +33,8 @@ export function getFolderBackdropAnimation(shouldReduceMotion: boolean) {
     exit: {
       opacity: 0,
       transition: {
-        duration: MODAL_DURATION * 0.45,
-        delay: MODAL_DURATION * 0.55,
-        ease: MODAL_EASE,
+        duration: 0.34,
+        ease: MODAL_EXIT_EASE,
       },
     },
   }
@@ -50,10 +53,11 @@ export function getCenteredModalAnimation(shouldReduceMotion: boolean) {
   }
 
   return {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
+    initial: { opacity: 0, scale: 0.96 },
+    animate: { opacity: 1, scale: 1 },
     exit: {
       opacity: 0,
+      scale: 0.985,
       transition: { duration: 0.14, ease: MODAL_EXIT_EASE },
     },
   }

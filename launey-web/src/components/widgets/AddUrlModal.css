@@ -42,12 +42,12 @@
   padding: 0;
   place-items: center;
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.56);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--modal-text-muted);
+  border: 1px solid var(--modal-card-border, var(--modal-control-border));
   border-radius: 24px;
-  background: var(--modal-card-background, rgba(36, 38, 44, 0.78));
-  -webkit-backdrop-filter: blur(20px) saturate(0.92);
-  backdrop-filter: blur(20px) saturate(0.92);
+  background: var(--modal-card-background, #0f0f0f);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   cursor: pointer;
   transition:
     background 160ms ease,
@@ -56,13 +56,15 @@
 }
 
 .icon-picker:active {
-  color: rgba(255, 255, 255, 0.7);
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(var(--modal-control-rgb, 42, 44, 50), 0.88);
+  color: var(--modal-text-secondary);
+  border-color: var(--modal-control-border-active);
+  background: var(--modal-control-background-active);
 }
 
 .icon-picker.has-image {
+  overflow: visible;
   border-color: transparent;
+  background: transparent;
 }
 
 .icon-picker.has-image:active {
@@ -81,8 +83,8 @@
 .icon-picker-loading {
   width: 30px;
   height: 30px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-top-color: rgba(255, 255, 255, 0.88);
+  border: 2px solid var(--modal-control-border);
+  border-top-color: var(--modal-text-primary);
   border-radius: 999px;
   animation: icon-picker-spin 680ms linear infinite;
 }
@@ -118,23 +120,22 @@
 .icon-picker-custom-preview {
   width: 100%;
   height: 100%;
-  border-radius: inherit;
 }
 
 .icon-enhance-button {
   width: 96px;
   height: 24px;
-  color: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--modal-text-primary);
+  border: 1px solid var(--modal-control-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--modal-hover-background);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .icon-enhance-button:active {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--modal-active-background);
 }
 
 .icon-picker-placeholder {
@@ -153,15 +154,15 @@
   width: 100%;
   height: 38px;
   padding: 0 14px;
-  color: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--modal-text-primary);
+  border: 1px solid var(--modal-control-border);
   border-radius: 12px;
   background: var(--modal-control-background, rgba(42, 44, 50, 0.64));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
   outline: 3px solid transparent;
   outline-offset: 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
   transition:
     background 160ms ease,
     border-color 160ms ease,
@@ -169,15 +170,15 @@
 }
 
 .modal-input::placeholder {
-  color: rgba(255, 255, 255, 0.34);
+  color: var(--modal-placeholder);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
 }
 
 .modal-input:focus {
-  border-color: rgba(255, 255, 255, 0.18);
-  outline-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--modal-control-border-active);
+  outline-color: var(--modal-focus-outline);
+  background: var(--modal-hover-background);
 }
 
 .frame-toggle-row {
@@ -187,12 +188,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 13px;
-  color: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--modal-text-primary);
+  border: 1px solid var(--modal-control-border);
   border-radius: 12px;
   background: transparent;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-description);
   cursor: pointer;
   transition:
     background 160ms ease,
@@ -200,8 +201,8 @@
 }
 
 .frame-toggle-row:active {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--modal-control-border-active);
+  background: var(--modal-hover-background);
 }
 
 .modal-actions {
@@ -214,7 +215,7 @@
 .modal-button {
   width: 192.5px;
   height: 46px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--modal-control-border);
   border-radius: 23px;
   font-size: 13px;
   font-weight: 600;
@@ -227,31 +228,31 @@
 }
 
 :is(.modal-button, .settings-inline-button).modal-button-primary {
-  color: rgba(8, 10, 18, 0.94);
-  border-color: rgba(255, 255, 255, 0.72);
-  background: rgba(244, 245, 248, 0.92);
+  color: var(--modal-primary-text);
+  border-color: var(--modal-primary-border);
+  background: var(--modal-primary-background);
 }
 
 :is(.modal-button, .settings-inline-button).modal-button-primary:active:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.86);
-  background: rgba(255, 255, 255, 0.96);
+  border-color: var(--modal-primary-border-active);
+  background: var(--modal-primary-background-active);
 }
 
 :is(.modal-button, .settings-inline-button).modal-button-primary:disabled {
-  color: rgba(10, 13, 24, 0.38);
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(238, 240, 246, 0.34);
+  color: var(--modal-primary-disabled-text);
+  border-color: var(--modal-primary-disabled-border);
+  background: var(--modal-primary-disabled-background);
   cursor: default;
 }
 
 .modal-button-secondary {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--modal-text-primary);
+  background: var(--modal-hover-background);
 }
 
 .modal-button-secondary:active {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--modal-control-border-active);
+  background: var(--modal-active-background);
 }
 
 .delete-url-modal {
@@ -260,26 +261,30 @@
 }
 
 .delete-url-text {
+  box-sizing: border-box;
   margin: 0;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 16px;
+  padding-right: 12px;
+  color: var(--modal-text-secondary);
+  font-size: 14px;
   line-height: 1.45;
 }
 
-.modal-button-destructive {
-  color: rgba(255, 255, 255, 0.95);
-  border-color: rgba(255, 105, 105, 0.24);
-  background: rgba(255, 80, 80, 0.78);
+.modal-button-destructive,
+.modal-button-danger {
+  color: var(--modal-danger-text);
+  border-color: var(--modal-danger-border);
+  background: var(--modal-danger-background);
 }
 
-.modal-button-destructive:active {
-  border-color: rgba(255, 120, 120, 0.32);
-  background: rgba(255, 92, 92, 0.86);
+.modal-button-destructive:active,
+.modal-button-danger:active {
+  border-color: var(--modal-danger-border-active);
+  background: var(--modal-danger-background-active);
 }
 
 .icon-picker:focus-within,
 .modal-button:focus-visible {
-  outline: 3px solid rgba(134, 175, 255, 0.62);
+  outline: 3px solid var(--modal-focus-outline);
   outline-offset: 2px;
 }
 

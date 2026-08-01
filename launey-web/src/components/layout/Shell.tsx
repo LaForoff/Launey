@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react'
@@ -21,6 +22,8 @@ import { CreateFolderModal, type FolderSelectionRef } from '../widgets/CreateFol
 import { EditSpacesOrderModal } from '../widgets/EditSpacesOrderModal'
 import { SpaceMenu } from '../widgets/SpaceMenu'
 import { SettingsWindow, type SettingsSection } from '../widgets/SettingsWindow'
+import { ReleaseChangelogModal } from '../widgets/ReleaseChangelogModal'
+import { PersistentModalBackdrop } from '../widgets/PersistentModalBackdrop'
 import { Toast, type ToastMessage } from '../widgets/Toast'
 import { UrlContextMenu } from '../widgets/UrlContextMenu'
 import { TileGrid } from '../tiles/TileGrid'
@@ -49,13 +52,15 @@ import { getTileFallbackIcon } from '../../lib/urlTile'
 import { fromLauneyExportSpaces, toLauneyExportSpaces, type LauneyExportFile } from '../../lib/launeySync'
 import { downloadLauneyExport, exportLauneyData, importLauneyData } from '../../lib/syncApi'
 import { GearSix, PencilSimple, Plus } from '@phosphor-icons/react'
+import { APP_VERSION } from '../../config/buildInfo'
 import './Shell.css'
 
 const ADAPTIVE_WALLPAPER_ACCENT = true
 const WALLPAPER_ACCENT_FALLBACK: RgbColor = { r: 90, g: 98, b: 112 }
-const SLIDER_ACCENT_FALLBACK: RgbColor = { r: 150, g: 165, b: 190 }
+const SLIDER_ACCENT_FALLBACK: RgbColor = { r: 0, g: 127, b: 255 }
 const NEUTRAL_ACCENT_RGB = formatRgbCss(WALLPAPER_ACCENT_FALLBACK)
 const NEUTRAL_SLIDER_RGB = formatRgbCss(SLIDER_ACCENT_FALLBACK)
+const SEEN_RELEASE_CHANGELOG_VERSION_KEY = 'launey-seen-release-changelog-version'
 let hasWarnedAboutAccentExtraction = false
 
 interface ShellProps {
@@ -66,6 +71,7 @@ interface ShellProps {
     key: number
     section: SettingsSection
   } | null
+  onOpenWhatsNew?: () => void
 }
 
 export function Shell({
@@ -73,6 +79,7 @@ export function Shell({
   activeSpaceIndex,
   autoFocusSearch = false,
   settingsOpenRequest = null,
+  onOpenWhatsNew,
 }: ShellProps) {
   const {
     spaces: localSpaces,
@@ -88,7 +95,7 @@ export function Shell({
     tile?: UrlTile
     folderId?: string
   }>({ isOpen: false, mode: 'add' })
-  const [spaceMenu, setSpaceMenu] = useState<{ x: number; y: number } | null>(null)
+  const [spaceMenu, setSpaceMenu] = useState<{ x: number; y: number; source: 'action-bar' | 'grid' } | null>(null)
   const [urlMenu, setUrlMenu] = useState<{
     x: number
     y: number
@@ -108,10 +115,13 @@ export function Shell({
   const [folderModalState, setFolderModalState] = useState<{
     folderId: string | null
     isOpen: boolean
+    sourceRect: { left: number; top: number; width: number; height: number } | null
   }>({
     folderId: null,
     isOpen: false,
+    sourceRect: null,
   })
+  const [isFolderModalEditMode, setIsFolderModalEditMode] = useState(false)
   const [isBackgroundModalOpen, setIsBackgroundModalOpen] = useState(false)
   const [isDeleteSpaceModalOpen, setIsDeleteSpaceModalOpen] = useState(false)
   const [isCreateSpaceModalOpen, setIsCreateSpaceModalOpen] = useState(false)
@@ -133,6 +143,9 @@ export function Shell({
   const [isSpaceTitleEditing, setIsSpaceTitleEditing] = useState(false)
   const [spaceTitleDraft, setSpaceTitleDraft] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isReleaseChangelogOpen, setIsReleaseChangelogOpen] = useState(
+    () => window.localStorage.getItem(SEEN_RELEASE_CHANGELOG_VERSION_KEY) !== APP_VERSION,
+  )
   const [requestedSettingsSection, setRequestedSettingsSection] = useState<SettingsSection | null>(null)
   const [appSettings, setAppSettings] = useState<AppSettings>(
     () => loadAppSettingsFromLocalStorage() ?? DEFAULT_APP_SETTINGS,
@@ -199,6 +212,7 @@ export function Shell({
   const background = getEffectiveBackground(previewSettings.background, activeSpace.background)
   const isAnyOverlayOpen =
     isSettingsOpen ||
+    isReleaseChangelogOpen ||
     urlModal.isOpen ||
     isBackgroundModalOpen ||
     isDeleteSpaceModalOpen ||
@@ -244,20 +258,23 @@ export function Shell({
     if (!ADAPTIVE_WALLPAPER_ACCENT) {
       root.style.setProperty('--wallpaper-accent-rgb', NEUTRAL_ACCENT_RGB)
       root.style.setProperty('--slider-accent-rgb', NEUTRAL_SLIDER_RGB)
+      updateBrowserThemeColor(WALLPAPER_ACCENT_FALLBACK)
       return
     }
 
     let isCancelled = false
     root.style.setProperty('--wallpaper-accent-rgb', NEUTRAL_ACCENT_RGB)
     root.style.setProperty('--slider-accent-rgb', NEUTRAL_SLIDER_RGB)
+    updateBrowserThemeColor(WALLPAPER_ACCENT_FALLBACK)
 
-    void getAdaptiveModalColors(background).then(({ accent, sliderAccent }) => {
+    void getAdaptiveModalColors(background).then(({ accent }) => {
       if (isCancelled) {
         return
       }
 
       root.style.setProperty('--wallpaper-accent-rgb', formatRgbCss(accent))
-      root.style.setProperty('--slider-accent-rgb', formatRgbCss(sliderAccent))
+      root.style.setProperty('--slider-accent-rgb', NEUTRAL_SLIDER_RGB)
+      updateBrowserThemeColor(accent)
     })
 
     return () => {
@@ -476,6 +493,10 @@ export function Shell({
           showToast('warning', 'Не удалось сохранить настройки')
         })
     }, 260)
+  }
+
+  function handleSearchEngineChange(searchEngine: AppSettings['searchEngine']) {
+    handleDraftSettingsChange((current) => ({ ...current, searchEngine }))
   }
 
   function switchSpaceByOffset(offset: -1 | 1) {
@@ -824,17 +845,32 @@ export function Shell({
   function handleOpenSpaceMenu(rect: DOMRect) {
     setUrlMenu(null)
     setFolderMenu(null)
-    setSpaceMenu({ x: rect.left, y: rect.bottom + 8 })
+    setSpaceMenu({ x: rect.left, y: rect.bottom + 8, source: 'action-bar' })
   }
 
-  function openFolderModal(folderId: string) {
+  function handleSpaceAreaContextMenu(event: ReactMouseEvent<HTMLElement>) {
+    event.preventDefault()
+    setUrlMenu(null)
+    setFolderMenu(null)
+    setSpaceMenu({ x: event.clientX, y: event.clientY, source: 'grid' })
+  }
+
+  function openFolderModal(folderId: string, rect: DOMRect) {
+    setIsFolderModalEditMode(false)
     setFolderModalState({
       folderId,
       isOpen: true,
+      sourceRect: {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      },
     })
   }
 
   function closeFolderModal() {
+    setIsFolderModalEditMode(false)
     setSpaceMenu(null)
     setUrlMenu(null)
     setFolderMenu(null)
@@ -848,7 +884,7 @@ export function Shell({
     setFolderModalState((currentState) =>
       currentState.isOpen
         ? currentState
-        : { folderId: null, isOpen: false },
+        : { folderId: null, isOpen: false, sourceRect: null },
     )
   }
 
@@ -878,6 +914,16 @@ export function Shell({
     setIsDeleteSpaceModalOpen(true)
   }
 
+  function openWhatsNewModal() {
+    setSpaceMenu(null)
+    onOpenWhatsNew?.()
+  }
+
+  function closeReleaseChangelog() {
+    window.localStorage.setItem(SEEN_RELEASE_CHANGELOG_VERSION_KEY, APP_VERSION)
+    setIsReleaseChangelogOpen(false)
+  }
+
   function openCreateSpaceModal() {
     setIsCreateSpaceModalOpen(true)
   }
@@ -899,6 +945,12 @@ export function Shell({
     }
 
     setFolderMenu(null)
+
+    if (folderModalState.isOpen && folderModalState.folderId === targetFolder.id) {
+      setIsFolderModalEditMode(true)
+      return
+    }
+
     setFolderBuilderModal({
       isOpen: true,
       mode: 'edit',
@@ -1339,6 +1391,7 @@ export function Shell({
   function handleSaveBackground(payload: {
     background: SpaceBackground
     applyToAllSpaces: boolean
+    recommendedDim?: number
   }) {
     setSpaces((currentSpaces) =>
       currentSpaces.map((space) =>
@@ -1351,16 +1404,15 @@ export function Shell({
       ),
     )
 
+    const currentSettings = isSettingsOpen ? draftSettingsRef.current : appSettings
     const nextSettings = sanitizeAppSettings({
-      ...appSettings,
+      ...currentSettings,
       background: payload.background,
+      backgroundDim: payload.recommendedDim ?? currentSettings.backgroundDim,
     })
 
     setAppSettings(nextSettings)
-    setDraftAppSettings((current) => ({
-      ...current,
-      background: nextSettings.background,
-    }))
+    setDraftAppSettings(nextSettings)
     saveAppSettingsToLocalStorage(nextSettings)
     void saveAppSettings(nextSettings).catch(() => {
       showToast('warning', 'Не удалось сохранить настройки фона')
@@ -1614,7 +1666,16 @@ export function Shell({
   const wallpaperDimOpacity = (previewSettings.backgroundDim / 100) * 0.65
 
   return (
-    <main className="shell">
+    <main
+      className="shell"
+      style={
+        {
+          '--folder-preview-wallpaper': isImageBackground(background)
+            ? `url("${background.value}")`
+            : 'none',
+        } as React.CSSProperties
+      }
+    >
       <div
         className={isImageBackground(background) ? 'wallpaper wallpaper-custom-image' : 'wallpaper'}
         style={
@@ -1639,8 +1700,16 @@ export function Shell({
       </div>
       <section className="home-screen">
         <Header weatherLocation={appSettings.weatherLocation} />
-        <SearchField shouldAutoFocus={autoFocusSearch} onArrowNavigate={switchSpaceByOffset} />
-        <section className="space-heading" aria-live="polite">
+        <SearchField
+          shouldAutoFocus={autoFocusSearch}
+          searchEngine={appSettings.searchEngine}
+          onSearchEngineChange={handleSearchEngineChange}
+          onArrowNavigate={switchSpaceByOffset}
+        />
+        <section
+          className={activeSpace.tiles.length === 0 ? 'space-heading is-empty-space' : 'space-heading'}
+          aria-live="polite"
+        >
           <div className={isSpaceTitleEditing ? 'space-title-wrap is-editing' : 'space-title-wrap'}>
             <div
               className={isSpaceTitleEditing ? 'space-title-static is-editing' : 'space-title-static'}
@@ -1689,6 +1758,7 @@ export function Shell({
                 swapKey={isSpaceTitleEditing ? 'save' : 'edit'}
                 className="space-edit-label"
                 intensity="soft"
+                presenceMode="popLayout"
               >
                 {isSpaceTitleEditing ? 'Сохранить' : 'Редактировать'}
               </GlowSwap>
@@ -1704,7 +1774,11 @@ export function Shell({
           </div>
         </section>
         <section
-          className="spaces-pager-viewport"
+          className={
+            activeSpace.tiles.length === 0
+              ? 'spaces-pager-viewport is-empty-space'
+              : 'spaces-pager-viewport'
+          }
           onPointerDown={handlePagerPointerDown}
           onPointerMove={handlePagerPointerMove}
           onPointerUp={handlePagerPointerEnd}
@@ -1725,14 +1799,14 @@ export function Shell({
           >
             {localSpaces.map((space, spaceIndex) => (
               <section className="space-page" key={space.id} aria-label={`Пространство ${space.title}`}>
-                <section className="tiles-viewport">
+                <section className="tiles-viewport" onContextMenu={handleSpaceAreaContextMenu}>
                   <TilesScrollArea isEmpty={space.tiles.length === 0}>
                     <TileGrid
                       tiles={space.tiles}
                       onAddUrl={openAddUrlModal}
                       onUrlContextMenu={(tile, x, y) => handleUrlContextMenu(tile, x, y)}
                       onFolderContextMenu={handleFolderContextMenu}
-                      onOpenFolder={(tile) => openFolderModal(tile.id)}
+                      onOpenFolder={(tile, rect) => openFolderModal(tile.id, rect)}
                       onDeleteUrl={(tile) => setDeleteTarget({ tile })}
                       onDeleteFolder={setFolderDeleteTarget}
                       onTileDragStateChange={setIsTileDragging}
@@ -1791,9 +1865,11 @@ export function Shell({
           x={spaceMenu.x}
           y={spaceMenu.y}
           canDeleteSpace={localSpaces.length > 1}
+          showDeleteSpace={spaceMenu.source === 'action-bar'}
           onAddUrl={openAddUrlModal}
           onCreateFolder={openCreateFolderModal}
           onChangeBackground={openBackgroundModal}
+          onOpenWhatsNew={openWhatsNewModal}
           onDeleteSpace={openDeleteSpaceModal}
         />
       ) : null}
@@ -1821,11 +1897,17 @@ export function Shell({
           onEdit={openEditFolderModal}
           onMoveToSpace={handleMoveFolderToSpace}
           onDelete={openDeleteFolderModal}
+          editLabel={
+            folderModalState.isOpen && folderModalState.folderId === folderMenu.tile.id
+              ? 'Редактировать'
+              : 'Изменить'
+          }
         />
       ) : null}
       <FolderModal
         folder={openedFolder && openedFolder.kind === 'folder' ? openedFolder : null}
         isOpen={folderModalState.isOpen && Boolean(openedFolder)}
+        sourceRect={folderModalState.sourceRect}
         onClose={closeFolderModal}
         onExitComplete={handleFolderModalExitComplete}
         onSurfaceClick={() => {
@@ -1834,6 +1916,34 @@ export function Shell({
           setSpaceMenu(null)
         }}
         onOpenMenu={(folder, rect) => handleFolderContextMenu(folder, rect.left, rect.bottom + 8)}
+        isEditMode={isFolderModalEditMode}
+        onEditModeChange={setIsFolderModalEditMode}
+        exitingTileIds={exitingTileIds}
+        onDeleteItem={(tile) => {
+          if (openedFolder && openedFolder.kind === 'folder') {
+            setDeleteTarget({ tile, folderId: openedFolder.id })
+          }
+        }}
+        onReorderItems={(items) => {
+          if (!openedFolder || openedFolder.kind !== 'folder') {
+            return
+          }
+
+          setSpaces((currentSpaces) =>
+            currentSpaces.map((space) =>
+              space.id === activeSpace.id
+                ? {
+                    ...space,
+                    tiles: space.tiles.map((tile) =>
+                      tile.kind === 'folder' && tile.id === openedFolder.id
+                        ? { ...tile, items }
+                        : tile,
+                    ),
+                  }
+                : space,
+            ),
+          )
+        }}
         onUrlContextMenu={(tile, x, y) =>
           openedFolder && openedFolder.kind === 'folder'
             ? handleUrlContextMenu(tile, x, y, openedFolder.id)
@@ -1893,17 +2003,28 @@ export function Shell({
         }
         onSubmit={handleSubmitFolder}
       />
-      <SettingsWindow
-        isOpen={isSettingsOpen}
-        draftSettings={draftAppSettings}
-        requestedSection={requestedSettingsSection}
-        onClose={closeSettingsPanel}
-        onDraftSettingsChange={handleDraftSettingsChange}
-        onOpenBackgroundPicker={openBackgroundModal}
-        onNotify={showToast}
-        onNotifySuccess={(text) => showToast('success', text)}
-        onExport={handleExportData}
-        onImport={handleImportData}
+      <PersistentModalBackdrop isOpen={isSettingsOpen || isReleaseChangelogOpen} />
+      {!isReleaseChangelogOpen && !isBackgroundModalOpen ? (
+        <SettingsWindow
+          isOpen={isSettingsOpen}
+          draftSettings={draftAppSettings}
+          requestedSection={requestedSettingsSection}
+          onClose={closeSettingsPanel}
+          onDraftSettingsChange={handleDraftSettingsChange}
+          onOpenBackgroundPicker={openBackgroundModal}
+          onNotify={showToast}
+          onNotifySuccess={(text) => showToast('success', text)}
+          onExport={handleExportData}
+          onImport={handleImportData}
+          onOpenWhatsNew={() => {
+            closeSettingsPanel()
+            setIsReleaseChangelogOpen(true)
+          }}
+        />
+      ) : null}
+      <ReleaseChangelogModal
+        isOpen={isReleaseChangelogOpen}
+        onClose={closeReleaseChangelog}
       />
       <ChangeBackgroundModal
         isOpen={isBackgroundModalOpen}
@@ -2202,28 +2323,22 @@ interface HslColor {
 
 async function getAdaptiveModalColors(background: SpaceBackground): Promise<{
   accent: RgbColor
-  sliderAccent: RgbColor
 }> {
-  if (!isImageBackground(background)) {
-    return {
-      accent: WALLPAPER_ACCENT_FALLBACK,
-      sliderAccent: SLIDER_ACCENT_FALLBACK,
-    }
-  }
-
-  const accentColor = await extractAccentColorFromImage(background.value)
+  const accentColor = isImageBackground(background)
+    ? await extractAccentColorFromImage(background.value)
+    : isVideoBackground(background)
+      ? await extractAccentColorFromVideo(background.value)
+      : null
 
   if (!accentColor) {
     return {
       accent: WALLPAPER_ACCENT_FALLBACK,
-      sliderAccent: SLIDER_ACCENT_FALLBACK,
     }
   }
 
   const normalizedAccent = normalizeAccentColor(accentColor)
   return {
     accent: normalizedAccent,
-    sliderAccent: enhanceSliderAccent(normalizedAccent),
   }
 }
 
@@ -2243,61 +2358,113 @@ async function extractAccentColorFromImage(src: string): Promise<RgbColor | null
       })
     }
 
-    const sampleSize = 48
-    const canvas = document.createElement('canvas')
-    canvas.width = sampleSize
-    canvas.height = sampleSize
-
-    const context = canvas.getContext('2d', { willReadFrequently: true })
-    if (!context) {
-      return null
-    }
-
-    context.drawImage(image, 0, 0, sampleSize, sampleSize)
-    const { data } = context.getImageData(0, 0, sampleSize, sampleSize)
-    let redTotal = 0
-    let greenTotal = 0
-    let blueTotal = 0
-    let sampleCount = 0
-
-    for (let index = 0; index < data.length; index += 4) {
-      const alpha = data[index + 3] / 255
-      if (alpha < 0.5) {
-        continue
-      }
-
-      const red = data[index]
-      const green = data[index + 1]
-      const blue = data[index + 2]
-      const brightness = getRelativeBrightness(red, green, blue)
-      const saturation = getRgbSaturation(red, green, blue)
-
-      if (brightness < 0.18 || brightness > 0.92 || saturation < 0.12) {
-        continue
-      }
-
-      redTotal += red
-      greenTotal += green
-      blueTotal += blue
-      sampleCount += 1
-    }
-
-    if (sampleCount < 12) {
-      return null
-    }
-
-    return {
-      r: Math.round(redTotal / sampleCount),
-      g: Math.round(greenTotal / sampleCount),
-      b: Math.round(blueTotal / sampleCount),
-    }
+    return sampleAccentColor(image)
   } catch (error) {
-    if (!hasWarnedAboutAccentExtraction && import.meta.env.DEV) {
-      hasWarnedAboutAccentExtraction = true
-      console.warn('Unable to extract wallpaper accent for interface accents.', error)
+    warnAboutAccentExtraction(error)
+    return null
+  }
+}
+
+async function extractAccentColorFromVideo(src: string): Promise<RgbColor | null> {
+  const video = document.createElement('video')
+
+  try {
+    video.crossOrigin = 'anonymous'
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'auto'
+    video.src = src
+
+    await new Promise<void>((resolvePromise, rejectPromise) => {
+      const timeoutId = window.setTimeout(() => {
+        cleanup()
+        rejectPromise(new Error('video-frame-timeout'))
+      }, 8000)
+
+      const cleanup = () => {
+        window.clearTimeout(timeoutId)
+        video.removeEventListener('loadeddata', handleLoadedData)
+        video.removeEventListener('error', handleError)
+      }
+      const handleLoadedData = () => {
+        cleanup()
+        resolvePromise()
+      }
+      const handleError = () => {
+        cleanup()
+        rejectPromise(new Error('video-frame-load-failed'))
+      }
+
+      video.addEventListener('loadeddata', handleLoadedData, { once: true })
+      video.addEventListener('error', handleError, { once: true })
+      video.load()
+    })
+
+    return sampleAccentColor(video)
+  } catch (error) {
+    warnAboutAccentExtraction(error)
+    return null
+  } finally {
+    video.removeAttribute('src')
+    video.load()
+  }
+}
+
+function sampleAccentColor(source: CanvasImageSource): RgbColor | null {
+  const sampleSize = 48
+  const canvas = document.createElement('canvas')
+  canvas.width = sampleSize
+  canvas.height = sampleSize
+
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) {
+    return null
+  }
+
+  context.drawImage(source, 0, 0, sampleSize, sampleSize)
+  const { data } = context.getImageData(0, 0, sampleSize, sampleSize)
+  let redTotal = 0
+  let greenTotal = 0
+  let blueTotal = 0
+  let sampleCount = 0
+
+  for (let index = 0; index < data.length; index += 4) {
+    const alpha = data[index + 3] / 255
+    if (alpha < 0.5) {
+      continue
     }
 
+    const red = data[index]
+    const green = data[index + 1]
+    const blue = data[index + 2]
+    const brightness = getRelativeBrightness(red, green, blue)
+    const saturation = getRgbSaturation(red, green, blue)
+
+    if (brightness < 0.18 || brightness > 0.92 || saturation < 0.12) {
+      continue
+    }
+
+    redTotal += red
+    greenTotal += green
+    blueTotal += blue
+    sampleCount += 1
+  }
+
+  if (sampleCount < 12) {
     return null
+  }
+
+  return {
+    r: Math.round(redTotal / sampleCount),
+    g: Math.round(greenTotal / sampleCount),
+    b: Math.round(blueTotal / sampleCount),
+  }
+}
+
+function warnAboutAccentExtraction(error: unknown) {
+  if (!hasWarnedAboutAccentExtraction && import.meta.env.DEV) {
+    hasWarnedAboutAccentExtraction = true
+    console.warn('Unable to extract wallpaper accent for interface accents.', error)
   }
 }
 
@@ -2310,18 +2477,21 @@ function normalizeAccentColor(color: RgbColor): RgbColor {
   })
 }
 
-function enhanceSliderAccent(color: RgbColor): RgbColor {
-  const hsl = rgbToHsl(color)
-
-  return hslToRgb({
-    h: hsl.h,
-    s: Math.min(0.58, Math.max(0.28, hsl.s + 0.2)),
-    l: Math.min(0.56, Math.max(0.4, hsl.l + 0.11)),
-  })
-}
-
 function formatRgbCss(color: RgbColor) {
   return `${color.r}, ${color.g}, ${color.b}`
+}
+
+function updateBrowserThemeColor(color: RgbColor) {
+  const browserTint: RgbColor = {
+    r: Math.round(color.r * 0.45),
+    g: Math.round(color.g * 0.45),
+    b: Math.round(color.b * 0.45),
+  }
+  const cssColor = `rgb(${formatRgbCss(browserTint)})`
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+  themeColor?.setAttribute('content', cssColor)
+  document.documentElement.style.backgroundColor = cssColor
+  document.body.style.backgroundColor = cssColor
 }
 
 function getRelativeBrightness(red: number, green: number, blue: number) {

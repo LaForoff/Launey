@@ -2,8 +2,8 @@
   --dotted-logo-dot-size: 14px;
   --dotted-logo-gap: 8px;
   display: grid;
-  grid-template-columns: repeat(4, var(--dotted-logo-dot-size));
-  grid-template-rows: repeat(4, var(--dotted-logo-dot-size));
+  grid-template-columns: repeat(var(--dotted-logo-grid-size, 4), var(--dotted-logo-dot-size));
+  grid-template-rows: repeat(var(--dotted-logo-grid-size, 4), var(--dotted-logo-dot-size));
   gap: var(--dotted-logo-gap);
 }
 
