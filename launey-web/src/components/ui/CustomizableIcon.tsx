@@ -86,6 +86,8 @@ export function CustomizableIcon({
             decoding={decoding}
             fetchPriority={fetchPriority}
             onLoad={onLoad}
+            adaptToTheme
+            surfaceColor={normalized?.hasBackground ? normalized.backgroundColor : undefined}
           />
         </span>
       </span>

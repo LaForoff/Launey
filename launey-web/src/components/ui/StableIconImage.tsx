@@ -1,5 +1,7 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type SyntheticEvent } from 'react'
 import { isCachedIconPath, isLocalUserIconPath } from '../../lib/iconApi'
+import { analyzeLoadedIcon, getCachedIconContrast, iconSurfaceForColor, type IconContrast } from '../../lib/iconContrast'
+import './AdaptiveIconImage.css'
 
 interface StableIconImageProps {
   src: string
@@ -9,7 +11,10 @@ interface StableIconImageProps {
   loading?: 'eager' | 'lazy'
   decoding?: 'sync' | 'async' | 'auto'
   fetchPriority?: 'high' | 'low' | 'auto'
-  onLoad?: () => void
+  onLoad?: (event: SyntheticEvent<HTMLImageElement>) => void
+  onError?: (event: SyntheticEvent<HTMLImageElement>) => void
+  adaptToTheme?: boolean
+  surfaceColor?: string
 }
 
 export function StableIconImage({
@@ -21,36 +26,43 @@ export function StableIconImage({
   decoding,
   fetchPriority,
   onLoad,
+  onError,
+  adaptToTheme = false,
+  surfaceColor,
 }: StableIconImageProps) {
-  const [runtimeSrc, setRuntimeSrc] = useState(src)
-  const [didRetry, setDidRetry] = useState(false)
+  const [retry, setRetry] = useState<{ src: string; at: number }>()
+  const [analysis, setAnalysis] = useState<{ src: string; value: IconContrast }>()
+  const didRetry = retry?.src === src
+  const runtimeSrc = didRetry ? `${src}${src.includes('?') ? '&' : '?'}v=${retry.at}` : src
+  const contrast = adaptToTheme ? (analysis?.src === src ? analysis.value : getCachedIconContrast(src)) : undefined
 
-  useEffect(() => {
-    setRuntimeSrc(src)
-    setDidRetry(false)
-  }, [src])
-
-  function handleError() {
+  function handleError(event: SyntheticEvent<HTMLImageElement>) {
     if (didRetry || (!isCachedIconPath(src) && !isLocalUserIconPath(src))) {
+      onError?.(event)
       return
     }
 
-    const separator = src.includes('?') ? '&' : '?'
-    setRuntimeSrc(`${src}${separator}v=${Date.now()}`)
-    setDidRetry(true)
+    setRetry({ src, at: Date.now() })
   }
 
   return (
     <img
-      className={className}
+      className={[className, adaptToTheme ? 'adaptive-icon-image' : ''].filter(Boolean).join(' ')}
       style={style}
       src={runtimeSrc}
       alt={alt}
       loading={loading}
       decoding={decoding}
       fetchPriority={fetchPriority}
-      onLoad={onLoad}
+      onLoad={(event) => {
+        if (adaptToTheme && event.currentTarget.getAttribute('src') === runtimeSrc) {
+          setAnalysis({ src, value: analyzeLoadedIcon(event.currentTarget, src) })
+        }
+        onLoad?.(event)
+      }}
       onError={handleError}
+      data-icon-contrast={contrast ?? 'none'}
+      data-icon-surface={iconSurfaceForColor(surfaceColor)}
     />
   )
 }

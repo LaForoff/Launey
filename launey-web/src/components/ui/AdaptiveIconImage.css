@@ -1,0 +1,22 @@
+.adaptive-icon-image {
+  border-radius: inherit;
+}
+
+.adaptive-icon-image[data-icon-contrast='monochrome'] {
+  filter: brightness(0);
+}
+
+html:not([data-theme='light']) .adaptive-icon-image[data-icon-contrast='monochrome'][data-icon-surface='theme'],
+.adaptive-icon-image[data-icon-contrast='monochrome'][data-icon-surface='dark'] {
+  filter: brightness(0) invert(1);
+}
+
+html:not([data-theme='light']) .adaptive-icon-image[data-icon-contrast='dark-content'][data-icon-surface='theme'],
+.adaptive-icon-image[data-icon-contrast='dark-content'][data-icon-surface='dark'] {
+  background-color: #fff;
+}
+
+html[data-theme='light'] .adaptive-icon-image[data-icon-contrast='light-content'][data-icon-surface='theme'],
+.adaptive-icon-image[data-icon-contrast='light-content'][data-icon-surface='light'] {
+  background-color: #17191e;
+}

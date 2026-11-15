@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { dirname, extname, resolve } from 'node:path'
 import type { Connect, Plugin } from 'vite'
 import type { IconCustomization, SpaceBackground } from '../src/types/space'
+import { createAnyLogoService } from './anyLogoApi'
 
 const ICONS_PUBLIC_DIR = resolve(process.cwd(), 'public/user-icons')
 const ICON_CACHE_PUBLIC_DIR = resolve(process.cwd(), 'public/icon-cache')
@@ -25,7 +26,6 @@ const ALLOWED_EXTENSIONS = new Set([
 ])
 const APP_STORE_COUNTRIES = ['us', 'ru', 'gb', 'tr', 'de', 'fr', 'pl', 'kz'] as const
 const MIN_RELEVANCE_SCORE = 40
-const SITE_ICONS_CACHE_TTL_MS = 1000 * 60 * 30
 const DEFAULT_APP_SETTINGS = {
   appearanceTheme: 'system',
   searchEngine: 'google',
@@ -81,13 +81,19 @@ type LauneyExportPayload = {
 }
 
 export function iconApiPlugin(): Plugin {
+  const anyLogo = createAnyLogoService()
   const middleware: Connect.NextHandleFunction = (req, res, next) => {
+    if (anyLogo.handleAsset(req, res)) return
+    const pathname = req.url?.split('?')[0]
+    if (pathname === '/api/brand-search' || pathname === '/api/brand-kit' || pathname === '/api/brand-image') {
+      void anyLogo.handle(req, res)
+      return
+    }
     if (
       !req.url?.startsWith('/api/icons') &&
       req.url !== '/api/cache-icon' &&
       req.url !== '/api/arc-import-spaces' &&
       !req.url?.startsWith('/api/app-store-icon') &&
-      !req.url?.startsWith('/api/site-icons') &&
       !req.url?.startsWith('/api/search-suggestions') &&
       !req.url?.startsWith('/api/settings') &&
       req.url !== '/api/export' &&
@@ -260,20 +266,6 @@ async function handleIconRequest(
       return
     }
 
-    if (req.method === 'GET' && req.url?.startsWith('/api/site-icons')) {
-      const requestUrl = new URL(req.url, 'http://localhost')
-      const rawUrl = requestUrl.searchParams.get('url')?.trim() ?? ''
-
-      if (!rawUrl) {
-        sendJson(res, 200, { ok: false, error: 'Иконки не найдены' })
-        return
-      }
-
-      const payload = await findSiteIcons(rawUrl)
-      sendJson(res, 200, payload)
-      return
-    }
-
     if (req.method === 'GET' && req.url?.startsWith('/api/search-suggestions')) {
       const requestUrl = new URL(req.url, 'http://localhost')
       const query = requestUrl.searchParams.get('q')?.trim() ?? ''
@@ -311,33 +303,6 @@ interface AppStoreSearchResult {
   artworkUrl100?: string
   artworkUrl60?: string
 }
-
-interface SiteIconCandidate {
-  id: string
-  type: 'apple-touch-icon' | 'manifest' | 'og-image' | 'favicon' | 'google-favicon' | 'generated'
-  url: string
-  previewUrl: string
-  source: string
-  score: number
-}
-
-type SiteIconsPayload =
-  | {
-      ok: true
-      domain: string
-      candidates: SiteIconCandidate[]
-    }
-  | {
-      ok: false
-      error: string
-    }
-
-interface SiteIconsCacheEntry {
-  expiresAt: number
-  payload: SiteIconsPayload
-}
-
-const siteIconsCache = new Map<string, SiteIconsCacheEntry>()
 
 type AppSettingsPayload = {
   appearanceTheme: 'system' | 'light' | 'dark'
@@ -500,398 +465,6 @@ function normalizeMzstaticIconSize(url: string | null) {
   }
 
   return url.replace(/\/(?:100|120|180|512)x(?:100|120|180|512)bb(?:-\d+)?(?=\.)/i, '/400x400bb-75')
-}
-
-async function findSiteIcons(rawUrl: string): Promise<SiteIconsPayload> {
-  const pageUrl = normalizeSiteUrl(rawUrl)
-  const cached = siteIconsCache.get(pageUrl)
-  const now = Date.now()
-
-  if (cached && cached.expiresAt > now) {
-    return cached.payload
-  }
-
-  try {
-    const pageResponse = await fetch(pageUrl, {
-      redirect: 'follow',
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-      },
-    })
-
-    if (!pageResponse.ok) {
-      return buildFallbackSiteIconsPayload(pageUrl)
-    }
-
-    const resolvedPageUrl = pageResponse.url || pageUrl
-    const pageOrigin = new URL(resolvedPageUrl).origin
-    const html = await pageResponse.text()
-    const candidates = new Map<string, SiteIconCandidate>()
-
-    collectHtmlLinkCandidates(html, resolvedPageUrl, candidates)
-    collectMetaCandidates(html, resolvedPageUrl, candidates)
-    await collectManifestCandidates(html, resolvedPageUrl, candidates)
-    collectFallbackCandidates(resolvedPageUrl, pageOrigin, candidates)
-    collectGeneratedCandidates(candidates)
-
-    const sorted = [...candidates.values()].sort((a, b) => b.score - a.score)
-
-    if (sorted.length === 0) {
-      return buildFallbackSiteIconsPayload(resolvedPageUrl)
-    }
-
-    const successPayload = {
-      ok: true as const,
-      domain: new URL(resolvedPageUrl).hostname,
-      candidates: sorted,
-    }
-    siteIconsCache.set(pageUrl, { expiresAt: now + SITE_ICONS_CACHE_TTL_MS, payload: successPayload })
-    return successPayload
-  } catch {
-    return buildFallbackSiteIconsPayload(pageUrl)
-  }
-}
-
-function buildFallbackSiteIconsPayload(pageUrl: string): SiteIconsPayload {
-  try {
-    const pageOrigin = new URL(pageUrl).origin
-    const candidates = new Map<string, SiteIconCandidate>()
-    collectFallbackCandidates(pageUrl, pageOrigin, candidates)
-    collectGeneratedCandidates(candidates)
-    const sorted = [...candidates.values()].sort((a, b) => b.score - a.score)
-
-    if (sorted.length === 0) {
-      return { ok: false, error: 'Иконки не найдены' }
-    }
-
-    return {
-      ok: true,
-      domain: new URL(pageUrl).hostname,
-      candidates: sorted,
-    }
-  } catch {
-    return { ok: false, error: 'Иконки не найдены' }
-  }
-}
-
-function normalizeSiteUrl(rawUrl: string) {
-  const value = rawUrl.trim()
-  const prefixed = /^https?:\/\//i.test(value) ? value : `https://${value}`
-  return new URL(prefixed).toString()
-}
-
-function collectHtmlLinkCandidates(
-  html: string,
-  pageUrl: string,
-  candidates: Map<string, SiteIconCandidate>,
-) {
-  for (const tagMatch of html.matchAll(/<link\b[^>]*>/gi)) {
-    const tag = tagMatch[0]
-    const rel = readHtmlAttribute(tag, 'rel')?.toLowerCase() ?? ''
-    const href = readHtmlAttribute(tag, 'href')
-
-    if (!href) {
-      continue
-    }
-
-    const normalizedRel = rel.replace(/\s+/g, ' ').trim()
-    const absUrl = toAbsoluteUrl(href, pageUrl)
-
-    if (!absUrl) {
-      continue
-    }
-
-    if (normalizedRel.includes('apple-touch-icon-precomposed') || normalizedRel.includes('apple-touch-icon')) {
-      upsertSiteCandidate(candidates, {
-        type: 'apple-touch-icon',
-        url: absUrl,
-        previewUrl: absUrl,
-        source: 'Apple Touch Icon',
-        score: 96 + scoreFromDeclaredSizes(readHtmlAttribute(tag, 'sizes')),
-      })
-      continue
-    }
-
-    if (
-      normalizedRel.includes('shortcut icon') ||
-      normalizedRel === 'icon' ||
-      normalizedRel.includes(' icon') ||
-      normalizedRel.includes('mask-icon')
-    ) {
-      upsertSiteCandidate(candidates, {
-        type: 'favicon',
-        url: absUrl,
-        previewUrl: absUrl,
-        source: normalizedRel.includes('mask-icon') ? 'Mask Icon' : 'Favicon',
-        score: 38 + scoreFromDeclaredSizes(readHtmlAttribute(tag, 'sizes')),
-      })
-    }
-  }
-}
-
-function collectMetaCandidates(
-  html: string,
-  pageUrl: string,
-  candidates: Map<string, SiteIconCandidate>,
-) {
-  for (const tagMatch of html.matchAll(/<meta\b[^>]*>/gi)) {
-    const tag = tagMatch[0]
-    const property = readHtmlAttribute(tag, 'property')?.toLowerCase()
-    const name = readHtmlAttribute(tag, 'name')?.toLowerCase()
-    const content = readHtmlAttribute(tag, 'content')
-
-    if (!content) {
-      continue
-    }
-
-    if (property !== 'og:image' && name !== 'twitter:image') {
-      continue
-    }
-
-    const absUrl = toAbsoluteUrl(content, pageUrl)
-
-    if (!absUrl) {
-      continue
-    }
-
-    upsertSiteCandidate(candidates, {
-      type: 'og-image',
-      url: absUrl,
-      previewUrl: absUrl,
-      source: property === 'og:image' ? 'Open Graph' : 'Twitter',
-      score: 64 + scoreFromUrlSize(absUrl),
-    })
-  }
-}
-
-async function collectManifestCandidates(
-  html: string,
-  pageUrl: string,
-  candidates: Map<string, SiteIconCandidate>,
-) {
-  const manifestUrl = findManifestUrl(html, pageUrl)
-
-  if (!manifestUrl) {
-    return
-  }
-
-  try {
-    const response = await fetch(manifestUrl, { redirect: 'follow' })
-
-    if (!response.ok) {
-      return
-    }
-
-    const payload = (await response.json()) as {
-      icons?: Array<{ src?: string; sizes?: string; type?: string }>
-    }
-
-    for (const icon of payload.icons ?? []) {
-      if (!icon.src) {
-        continue
-      }
-
-      const absUrl = toAbsoluteUrl(icon.src, manifestUrl)
-
-      if (!absUrl) {
-        continue
-      }
-
-      const sizeScore = scoreFromDeclaredSizes(icon.sizes)
-      const mimeBonus = icon.type?.includes('svg') ? 4 : icon.type?.includes('png') ? 8 : 0
-
-      upsertSiteCandidate(candidates, {
-        type: 'manifest',
-        url: absUrl,
-        previewUrl: absUrl,
-        source: 'Manifest Icon',
-        score: 84 + sizeScore + mimeBonus + scoreFromUrlSize(absUrl),
-      })
-    }
-  } catch {
-    // ignore
-  }
-}
-
-function findManifestUrl(html: string, pageUrl: string) {
-  for (const tagMatch of html.matchAll(/<link\b[^>]*>/gi)) {
-    const tag = tagMatch[0]
-    const rel = readHtmlAttribute(tag, 'rel')?.toLowerCase() ?? ''
-    const href = readHtmlAttribute(tag, 'href')
-
-    if (!href || !rel.includes('manifest')) {
-      continue
-    }
-
-    return toAbsoluteUrl(href, pageUrl)
-  }
-
-  return null
-}
-
-function collectFallbackCandidates(
-  pageUrl: string,
-  pageOrigin: string,
-  candidates: Map<string, SiteIconCandidate>,
-) {
-  const domain = new URL(pageUrl).hostname
-  const faviconUrl = `${pageOrigin}/favicon.ico`
-  const googleUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=256`
-
-  upsertSiteCandidate(candidates, {
-    type: 'favicon',
-    url: faviconUrl,
-    previewUrl: faviconUrl,
-    source: 'Favicon fallback',
-    score: 25,
-  })
-
-  upsertSiteCandidate(candidates, {
-    type: 'google-favicon',
-    url: googleUrl,
-    previewUrl: googleUrl,
-    source: 'Google Favicon',
-    score: 18,
-  })
-}
-
-function collectGeneratedCandidates(candidates: Map<string, SiteIconCandidate>) {
-  const baseCandidates = [...candidates.values()]
-    .filter((candidate) => candidate.type !== 'google-favicon')
-    .slice(0, 6)
-
-  for (const candidate of baseCandidates) {
-    const generated = buildGeneratedIconDataUrl(candidate.url)
-    if (!generated) {
-      continue
-    }
-
-    upsertSiteCandidate(candidates, {
-      type: 'generated',
-      url: generated,
-      previewUrl: generated,
-      source: `Generated from ${candidate.source}`,
-      score: candidate.score + 2,
-    })
-  }
-}
-
-function buildGeneratedIconDataUrl(sourceUrl: string) {
-  const escaped = sourceUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3A3D48"/><stop offset="1" stop-color="#2C303A"/></linearGradient></defs><rect width="512" height="512" rx="136" fill="url(#g)"/><image href="${escaped}" x="102" y="102" width="308" height="308" preserveAspectRatio="xMidYMid meet"/></svg>`
-
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
-
-function readHtmlAttribute(tag: string, attribute: string) {
-  const regex = new RegExp(`${attribute}\\s*=\\s*["']([^"']+)["']`, 'i')
-  const match = tag.match(regex)
-  return match?.[1]?.trim()
-}
-
-function toAbsoluteUrl(value: string, baseUrl: string) {
-  try {
-    return new URL(value, baseUrl).toString()
-  } catch {
-    return null
-  }
-}
-
-function scoreFromDeclaredSizes(sizesValue: string | undefined) {
-  if (!sizesValue) {
-    return 0
-  }
-
-  let score = 0
-
-  for (const token of sizesValue.split(/\s+/)) {
-    const sizeMatch = token.toLowerCase().match(/(\d{2,4})x(\d{2,4})/)
-    if (!sizeMatch) {
-      continue
-    }
-
-    const width = Number(sizeMatch[1])
-    const height = Number(sizeMatch[2])
-    const minSide = Math.min(width, height)
-    const ratio = Math.max(width, height) / Math.max(1, minSide)
-
-    if (minSide >= 512) {
-      score += 16
-    } else if (minSide >= 192) {
-      score += 12
-    } else if (minSide >= 180) {
-      score += 9
-    } else if (minSide >= 96) {
-      score += 4
-    }
-
-    if (ratio <= 1.2) {
-      score += 4
-    }
-  }
-
-  return score
-}
-
-function scoreFromUrlSize(url: string) {
-  const lower = url.toLowerCase()
-  const match = lower.match(/(\d{2,4})[x_](\d{2,4})/)
-
-  if (!match) {
-    return lower.endsWith('.svg') ? 6 : 0
-  }
-
-  const width = Number(match[1])
-  const height = Number(match[2])
-  const minSide = Math.min(width, height)
-  const ratio = Math.max(width, height) / Math.max(1, minSide)
-  let score = 0
-
-  if (minSide >= 512) {
-    score += 16
-  } else if (minSide >= 192) {
-    score += 11
-  } else if (minSide >= 180) {
-    score += 8
-  } else if (minSide >= 96) {
-    score += 3
-  }
-
-  if (ratio <= 1.2) {
-    score += 4
-  }
-
-  return score
-}
-
-function upsertSiteCandidate(
-  candidates: Map<string, SiteIconCandidate>,
-  candidate: Omit<SiteIconCandidate, 'id'>,
-) {
-  const current = candidates.get(candidate.previewUrl)
-
-  if (current && current.score >= candidate.score) {
-    return
-  }
-
-  const id = candidate.previewUrl.startsWith('data:image/')
-    ? `generated-${randomUUID()}`
-    : `${candidate.type}-${hashString(candidate.previewUrl)}`
-
-  candidates.set(candidate.previewUrl, {
-    ...candidate,
-    id,
-  })
-}
-
-function hashString(value: string) {
-  let hash = 0
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index)
-    hash |= 0
-  }
-  return Math.abs(hash).toString(36)
 }
 
 function saveIconFile(buffer: Buffer, fileNameHeader: string | undefined, contentType: string | undefined) {
